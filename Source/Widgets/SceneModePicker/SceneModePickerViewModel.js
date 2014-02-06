@@ -29,9 +29,11 @@ define([
      * @exception {DeveloperError} transitioner is required.
      */
     var SceneModePickerViewModel = function(transitioner) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(transitioner)) {
             throw new DeveloperError('transitioner is required.');
         }
+        //>>includeEnd('debug');
 
         this._transitioner = transitioner;
 
@@ -43,7 +45,7 @@ define([
         };
 
         this._eventHelper = new EventHelper();
-        this._eventHelper.add(transitioner.onTransitionStart, transitionStart);
+        this._eventHelper.add(transitioner.transitionStart, transitionStart);
 
         /**
          * Gets or sets the current SceneMode.  This property is observable.
@@ -84,7 +86,6 @@ define([
         /**
          * Gets the currently active tooltip.  This property is observable.
          * @type {String}
-         * @default undefined
          */
         this.selectedTooltip = undefined;
         knockout.defineProperty(this, 'selectedTooltip', function() {

@@ -24,13 +24,13 @@ defineSuite([
         frustum.far = 2.0;
         frustum.fovy = (Math.PI) / 3;
         frustum.aspectRatio = 1.0;
-        cullingVolume = frustum.computeCullingVolume(new Cartesian3(), Cartesian3.UNIT_Z.negate(), Cartesian3.UNIT_Y);
+        cullingVolume = frustum.computeCullingVolume(new Cartesian3(), Cartesian3.negate(Cartesian3.UNIT_Z), Cartesian3.UNIT_Y);
     });
 
     it('getVisibility throws without a bounding volume', function() {
         expect(function() {
             return new CullingVolume().getVisibility();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     describe('box intersections', function() {

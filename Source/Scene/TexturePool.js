@@ -81,15 +81,17 @@ define([
      * @see Context#createTexture2D
      */
     TexturePool.prototype.createTexture2D = function(context, description) {
+        //>>includeStart('debug', pragmas.debug);
         if (!description) {
             throw new DeveloperError('description is required.');
         }
+        //>>includeEnd('debug');
 
         var source = description.source;
         var width = defined(source) ? source.width : description.width;
         var height = defined(source) ? source.height : description.height;
         //coerce values to primitive numbers to make textureTypeKey smaller.
-        var pixelFormat = +(description.pixelFormat || PixelFormat.RGBA);
+        var pixelFormat = (description.pixelFormat || PixelFormat.RGBA);
         var pixelDatatype = +(description.pixelDatatype || PixelDatatype.UNSIGNED_BYTE);
         var preMultiplyAlpha = +(description.preMultiplyAlpha || pixelFormat === PixelFormat.RGB || pixelFormat === PixelFormat.LUMINANCE);
 
@@ -115,7 +117,7 @@ define([
      *
      * @memberof TexturePool
      *
-     * @return {Boolean} True if this object was destroyed; otherwise, false.
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
      *
      * @see TexturePool#destroy
      */
@@ -133,7 +135,7 @@ define([
      *
      * @memberof TexturePool
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *

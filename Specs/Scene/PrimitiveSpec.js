@@ -22,11 +22,11 @@ defineSuite([
          'Scene/OrthographicFrustum',
          'Specs/render',
          'Specs/pick',
-         'Specs/createCanvas',
-         'Specs/destroyCanvas',
          'Specs/createContext',
          'Specs/destroyContext',
-         'Specs/createFrameState'
+         'Specs/createFrameState',
+         'Specs/createScene',
+         'Specs/destroyScene'
      ], function(
          Primitive,
          ExtentGeometry,
@@ -50,11 +50,11 @@ defineSuite([
          OrthographicFrustum,
          render,
          pick,
-         createCanvas,
-         destroyCanvas,
          createContext,
          destroyContext,
-         createFrameState) {
+         createFrameState,
+         createScene,
+         destroyScene) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -75,7 +75,7 @@ defineSuite([
         frameState = createFrameState();
 
         us = context.getUniformState();
-        us.update(frameState);
+        us.update(context, frameState);
 
         ellipsoid = Ellipsoid.WGS84;
     });
@@ -88,7 +88,7 @@ defineSuite([
         extent1 = Extent.fromDegrees(-80.0, 20.0, -70.0, 30.0);
         extent2 = Extent.fromDegrees(70.0, 20.0, 80.0, 30.0);
 
-        var translation = ellipsoid.cartographicToCartesian(extent1.getCenter()).normalize().multiplyByScalar(2.0);
+        var translation = Cartesian3.multiplyByScalar(Cartesian3.normalize(ellipsoid.cartographicToCartesian(extent1.getCenter())), 2.0);
         extentInstance1 = new GeometryInstance({
             geometry : new ExtentGeometry({
                 vertexFormat : PerInstanceColorAppearance.VERTEX_FORMAT,
@@ -103,7 +103,7 @@ defineSuite([
             }
         });
 
-        translation = ellipsoid.cartographicToCartesian(extent2.getCenter()).normalize().multiplyByScalar(3.0);
+        translation = Cartesian3.multiplyByScalar(Cartesian3.normalize(ellipsoid.cartographicToCartesian(extent2.getCenter())), 3.0);
         extentInstance2 = new GeometryInstance({
             geometry : new ExtentGeometry({
                 vertexFormat : PerInstanceColorAppearance.VERTEX_FORMAT,
@@ -125,7 +125,12 @@ defineSuite([
         expect(primitive.appearance).not.toBeDefined();
         expect(primitive.modelMatrix).toEqual(Matrix4.IDENTITY);
         expect(primitive.show).toEqual(true);
+        expect(primitive.vertexCacheOptimize).toEqual(false);
+        expect(primitive.releaseGeometryInstances).toEqual(true);
+        expect(primitive.allow3DOnly).toEqual(false);
+        expect(primitive.allowPicking).toEqual(true);
         expect(primitive.asynchronous).toEqual(true);
+        expect(primitive.debugShowBoundingVolume).toEqual(false);
     });
 
     it('releases geometry instances when releaseGeometryInstances is true', function() {
@@ -158,6 +163,21 @@ defineSuite([
         primitive = primitive && primitive.destroy();
     });
 
+    it('does not render when geometryInstances is an empty array', function() {
+        var primitive = new Primitive({
+            geometryInstances : [],
+            appearance : new PerInstanceColorAppearance(),
+            allow3DOnly : true,
+            asynchronous : false
+        });
+
+        var commands = [];
+        primitive.update(context, frameState, commands);
+        expect(commands.length).toEqual(0);
+
+        primitive = primitive && primitive.destroy();
+    });
+
     it('does not render when show is false', function() {
         var primitive = new Primitive({
             geometryInstances : [extentInstance1, extentInstance2],
@@ -186,15 +206,15 @@ defineSuite([
             asynchronous : false
         });
 
-        frameState.passes.color = false;
+        frameState.passes.render = false;
         frameState.passes.pick = false;
 
         var commands = [];
         primitive.update(context, frameState, commands);
         expect(commands.length).toEqual(0);
 
-        frameState.passes.color = true;
-        frameState.passes.pick = true;
+        frameState.passes.render = true;
+        frameState.passes.pick = false;
 
         primitive = primitive && primitive.destroy();
     });
@@ -257,8 +277,7 @@ defineSuite([
 
         var commands = [];
         primitive.update(context, frameState, commands);
-        expect(commands.length).toEqual(1);
-        expect(commands[0].colorList.length).toEqual(2);
+        expect(commands.length).toEqual(2);
 
         primitive = primitive && primitive.destroy();
     });
@@ -280,7 +299,7 @@ defineSuite([
         frameState.camera.controller.update(frameState.mode, frameState.scene2D);
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -289,7 +308,7 @@ defineSuite([
         expect(context.readPixels()).not.toEqual([0, 0, 0, 0]);
 
         frameState.camera.controller.viewExtent(extent2);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -324,7 +343,7 @@ defineSuite([
         frameState.camera.controller.update(frameState.mode, frameState.scene2D);
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -333,7 +352,7 @@ defineSuite([
         expect(context.readPixels()).not.toEqual([0, 0, 0, 0]);
 
         frameState.camera.controller.viewExtent(extent2);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -345,6 +364,26 @@ defineSuite([
         primitive = primitive && primitive.destroy();
     });
 
+    it('renders bounding volume with debugShowBoundingVolume', function() {
+        var scene = createScene();
+        scene.getPrimitives().add(new Primitive({
+            geometryInstances : extentInstance1,
+            appearance : new PerInstanceColorAppearance(),
+            asynchronous : false,
+            debugShowBoundingVolume : true
+        }));
+        scene.getCamera().controller.viewExtent(extent1);
+        scene.initializeFrame();
+        scene.render();
+        var pixels = scene.getContext().readPixels();
+        expect(pixels[0]).not.toEqual(0);
+        expect(pixels[1]).toEqual(0);
+        expect(pixels[2]).toEqual(0);
+        expect(pixels[3]).toEqual(255);
+
+        destroyScene(scene);
+    });
+
     it('transforms to world coordinates', function() {
         var primitive = new Primitive({
             geometryInstances : [extentInstance1, extentInstance2],
@@ -354,7 +393,7 @@ defineSuite([
         });
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -363,7 +402,7 @@ defineSuite([
         expect(context.readPixels()).not.toEqual([0, 0, 0, 0]);
 
         frameState.camera.controller.viewExtent(extent2);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -386,7 +425,7 @@ defineSuite([
         });
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -395,7 +434,7 @@ defineSuite([
         expect(context.readPixels()).not.toEqual([0, 0, 0, 0]);
 
         frameState.camera.controller.viewExtent(extent2);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -444,7 +483,7 @@ defineSuite([
         });
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -477,7 +516,7 @@ defineSuite([
         });
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -507,14 +546,36 @@ defineSuite([
         });
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
-        expect(pick(context, frameState, primitive)).toEqual('extent1');
+        var pickObject = pick(context, frameState, primitive);
+        expect(pickObject.primitive).toEqual(primitive);
+        expect(pickObject.id).toEqual('extent1');
 
         frameState.camera.controller.viewExtent(extent2);
-        us.update(frameState);
+        us.update(context, frameState);
 
-        expect(pick(context, frameState, primitive)).toEqual('extent2');
+        pickObject = pick(context, frameState, primitive);
+        expect(pickObject.primitive).toEqual(primitive);
+        expect(pickObject.id).toEqual('extent2');
+
+        primitive = primitive && primitive.destroy();
+    });
+
+    it('does not pick when allowPicking is false', function() {
+        var primitive = new Primitive({
+            geometryInstances : [extentInstance1],
+            appearance : new PerInstanceColorAppearance(),
+            allow3DOnly : true,
+            allowPicking : false,
+            asynchronous : false
+        });
+
+        frameState.camera.controller.viewExtent(extent1);
+        us.update(context, frameState);
+
+        var pickObject = pick(context, frameState, primitive);
+        expect(pickObject).not.toBeDefined();
 
         primitive = primitive && primitive.destroy();
     });
@@ -553,7 +614,7 @@ defineSuite([
 
         expect(function() {
             primitive.update(context, frameState, []);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('shader validation', function() {
@@ -568,7 +629,7 @@ defineSuite([
 
         expect(function() {
             primitive.update(context, frameState, []);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('setting per instance attribute throws when value is undefined', function() {
@@ -584,7 +645,7 @@ defineSuite([
 
         expect(function() {
             attributes.color = undefined;
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         primitive = primitive && primitive.destroy();
     });
@@ -601,7 +662,7 @@ defineSuite([
 
         expect(function() {
             primitive.getGeometryInstanceAttributes();
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         primitive = primitive && primitive.destroy();
     });
@@ -616,7 +677,7 @@ defineSuite([
 
         expect(function() {
             primitive.getGeometryInstanceAttributes('extent1');
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         primitive = primitive && primitive.destroy();
     });
@@ -650,7 +711,7 @@ defineSuite([
         });
 
         frameState.camera.controller.viewExtent(extent1);
-        us.update(frameState);
+        us.update(context, frameState);
 
         waitsFor(function() {
             return render(context, frameState, primitive) > 0;
@@ -680,5 +741,4 @@ defineSuite([
         primitive.destroy();
         expect(primitive.isDestroyed()).toEqual(true);
     });
-
-});
+}, 'WebGL');

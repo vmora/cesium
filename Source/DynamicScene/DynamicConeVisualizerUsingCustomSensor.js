@@ -103,9 +103,12 @@ define([
      *
      */
     var DynamicConeVisualizerUsingCustomSensor = function(scene, dynamicObjectCollection) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(scene)) {
             throw new DeveloperError('scene is required.');
         }
+        //>>includeEnd('debug');
+
         this._scene = scene;
         this._unusedIndexes = [];
         this._primitives = scene.getPrimitives();
@@ -141,12 +144,12 @@ define([
         var oldCollection = this._dynamicObjectCollection;
         if (oldCollection !== dynamicObjectCollection) {
             if (defined(oldCollection)) {
-                oldCollection.objectsRemoved.removeEventListener(DynamicConeVisualizerUsingCustomSensor.prototype._onObjectsRemoved, this);
+                oldCollection.collectionChanged.removeEventListener(DynamicConeVisualizerUsingCustomSensor.prototype._onObjectsRemoved, this);
                 this.removeAllPrimitives();
             }
             this._dynamicObjectCollection = dynamicObjectCollection;
             if (defined(dynamicObjectCollection)) {
-                dynamicObjectCollection.objectsRemoved.addEventListener(DynamicConeVisualizerUsingCustomSensor.prototype._onObjectsRemoved, this);
+                dynamicObjectCollection.collectionChanged.addEventListener(DynamicConeVisualizerUsingCustomSensor.prototype._onObjectsRemoved, this);
             }
         }
     };
@@ -160,9 +163,12 @@ define([
      * @exception {DeveloperError} time is required.
      */
     DynamicConeVisualizerUsingCustomSensor.prototype.update = function(time) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is requied.');
         }
+        //>>includeEnd('debug');
+
         if (defined(this._dynamicObjectCollection)) {
             var dynamicObjects = this._dynamicObjectCollection.getObjects();
             for ( var i = 0, len = dynamicObjects.length; i < len; i++) {
@@ -199,7 +205,7 @@ define([
      *
      * @memberof DynamicConeVisualizerUsingCustomSensor
      *
-     * @return {Boolean} True if this object was destroyed; otherwise, false.
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
      *
      * @see DynamicConeVisualizerUsingCustomSensor#destroy
      */
@@ -217,7 +223,7 @@ define([
      *
      * @memberof DynamicConeVisualizerUsingCustomSensor
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
@@ -227,31 +233,30 @@ define([
      * visualizer = visualizer && visualizer.destroy();
      */
     DynamicConeVisualizerUsingCustomSensor.prototype.destroy = function() {
-        this.removeAllPrimitives();
+        this.setDynamicObjectCollection(undefined);
         return destroyObject(this);
     };
 
     var cachedPosition = new Cartesian3();
     var cachedOrientation = new Quaternion();
     function updateObject(dynamicConeVisualizerUsingCustomSensor, time, dynamicObject) {
-        var context = dynamicConeVisualizerUsingCustomSensor._scene.getContext();
-        var dynamicCone = dynamicObject.cone;
+        var dynamicCone = dynamicObject._cone;
         if (!defined(dynamicCone)) {
             return;
         }
 
-        var positionProperty = dynamicObject.position;
+        var positionProperty = dynamicObject._position;
         if (!defined(positionProperty)) {
             return;
         }
 
-        var orientationProperty = dynamicObject.orientation;
+        var orientationProperty = dynamicObject._orientation;
         if (!defined(orientationProperty)) {
             return;
         }
 
         var cone;
-        var showProperty = dynamicCone.show;
+        var showProperty = dynamicCone._show;
         var coneVisualizerIndex = dynamicObject._coneVisualizerIndex;
         var show = dynamicObject.isAvailable(time) && (!defined(showProperty) || showProperty.getValue(time));
 
@@ -283,8 +288,8 @@ define([
             cone.dynamicObject = dynamicObject;
 
             // CZML_TODO Determine official defaults
-            cone.material = Material.fromType(context, Material.ColorType);
-            cone.intersectionColor = Color.YELLOW.clone();
+            cone.material = Material.fromType(Material.ColorType);
+            cone.intersectionColor = Color.clone(Color.YELLOW);
             cone.intersectionWidth = 5.0;
             cone.radius = Number.POSITIVE_INFINITY;
             cone.showIntersection = true;
@@ -295,7 +300,7 @@ define([
         cone.show = true;
 
         var minimumClockAngle;
-        var property = dynamicCone.minimumClockAngle;
+        var property = dynamicCone._minimumClockAngle;
         if (defined(property)) {
             minimumClockAngle = property.getValue(time);
         }
@@ -304,7 +309,7 @@ define([
         }
 
         var maximumClockAngle;
-        property = dynamicCone.maximumClockAngle;
+        property = dynamicCone._maximumClockAngle;
         if (defined(property)) {
             maximumClockAngle = property.getValue(time);
         }
@@ -313,7 +318,7 @@ define([
         }
 
         var innerHalfAngle;
-        property = dynamicCone.innerHalfAngle;
+        property = dynamicCone._innerHalfAngle;
         if (defined(property)) {
             innerHalfAngle = property.getValue(time);
         }
@@ -322,7 +327,7 @@ define([
         }
 
         var outerHalfAngle;
-        property = dynamicCone.outerHalfAngle;
+        property = dynamicCone._outerHalfAngle;
         if (defined(property)) {
             outerHalfAngle = property.getValue(time);
         }
@@ -342,7 +347,7 @@ define([
             cone.minimumClockAngle = minimumClockAngle;
         }
 
-        property = dynamicCone.radius;
+        property = dynamicCone._radius;
         if (defined(property)) {
             var radius = property.getValue(time);
             if (defined(radius)) {
@@ -355,21 +360,21 @@ define([
 
         if (defined(position) &&
             defined(orientation) &&
-            (!position.equals(cone._visualizerPosition) ||
-             !orientation.equals(cone._visualizerOrientation))) {
+            (!Cartesian3.equals(position, cone._visualizerPosition) ||
+             !Quaternion.equals(orientation, cone._visualizerOrientation))) {
             Matrix4.fromRotationTranslation(Matrix3.fromQuaternion(orientation, matrix3Scratch), position, cone.modelMatrix);
-            cone._visualizerPosition = position.clone(cone._visualizerPosition);
-            cone._visualizerOrientation = orientation.clone(cone._visualizerOrientation);
+            cone._visualizerPosition = Cartesian3.clone(position, cone._visualizerPosition);
+            cone._visualizerOrientation = Quaternion.clone(orientation, cone._visualizerOrientation);
         }
 
-        cone.material = MaterialProperty.getValue(time, context, dynamicCone.outerMaterial, cone.material);
+        cone.material = MaterialProperty.getValue(time, dynamicCone._outerMaterial, cone.material);
 
-        property = dynamicCone.intersectionColor;
+        property = dynamicCone._intersectionColor;
         if (defined(property)) {
             property.getValue(time, cone.intersectionColor);
         }
 
-        property = dynamicCone.intersectionWidth;
+        property = dynamicCone._intersectionWidth;
         if (defined(property)) {
             var intersectionWidth = property.getValue(time);
             if (defined(intersectionWidth)) {
@@ -378,7 +383,7 @@ define([
         }
     }
 
-    DynamicConeVisualizerUsingCustomSensor.prototype._onObjectsRemoved = function(dynamicObjectCollection, dynamicObjects) {
+    DynamicConeVisualizerUsingCustomSensor.prototype._onObjectsRemoved = function(dynamicObjectCollection, added, dynamicObjects) {
         var thisConeCollection = this._coneCollection;
         var thisUnusedIndexes = this._unusedIndexes;
         for ( var i = dynamicObjects.length - 1; i > -1; i--) {

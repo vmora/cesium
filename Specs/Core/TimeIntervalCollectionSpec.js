@@ -452,80 +452,119 @@ defineSuite([
         expect(intersectedIntervals.get(0).data.value).toEqual(3);
     });
 
+    it('equals works without data', function() {
+        var interval1 = new TimeInterval(JulianDate.fromTotalDays(1), JulianDate.fromTotalDays(2), true, true);
+        var interval2 = new TimeInterval(JulianDate.fromTotalDays(2), JulianDate.fromTotalDays(3), false, true);
+        var interval3 = new TimeInterval(JulianDate.fromTotalDays(4), JulianDate.fromTotalDays(5), true, true);
+
+        var left = new TimeIntervalCollection();
+        left.addInterval(interval1);
+        left.addInterval(interval2);
+        left.addInterval(interval3);
+
+        var right = new TimeIntervalCollection();
+        right.addInterval(interval1);
+        right.addInterval(interval2);
+        right.addInterval(interval3);
+        expect(left.equals(right)).toEqual(true);
+    });
+
+    it('equals works with data', function() {
+        var left = new TimeIntervalCollection();
+        left.addInterval(new TimeInterval(JulianDate.fromTotalDays(1), JulianDate.fromTotalDays(2), true, true, {}));
+        left.addInterval(new TimeInterval(JulianDate.fromTotalDays(2), JulianDate.fromTotalDays(3), false, true, {}));
+        left.addInterval(new TimeInterval(JulianDate.fromTotalDays(4), JulianDate.fromTotalDays(5), true, true, {}));
+
+        var right = new TimeIntervalCollection();
+        right.addInterval(new TimeInterval(JulianDate.fromTotalDays(1), JulianDate.fromTotalDays(2), true, true, {}));
+        right.addInterval(new TimeInterval(JulianDate.fromTotalDays(2), JulianDate.fromTotalDays(3), false, true, {}));
+        right.addInterval(new TimeInterval(JulianDate.fromTotalDays(4), JulianDate.fromTotalDays(5), true, true, {}));
+
+        expect(left.equals(right)).toEqual(false);
+
+        expect(left.equals(right, function() {
+            return true;
+        })).toEqual(true);
+
+        expect(left.equals(right, function() {
+            return false;
+        })).toEqual(false);
+    });
+
     it('get throws with undefined', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.get(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('get throws with NaN', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.get(NaN);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('get throws with non-number', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.get({});
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('findIntervalContainingDate throws with undefined date', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.findIntervalContainingDate(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('findDataForIntervalContainingDate throws with undefined date', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.findDataForIntervalContainingDate(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('contains throws with undefined date', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.contains(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('indexOf throws with undefined date', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.indexOf(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('addInterval throws with undefined interval', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.addInterval(undefined, TestObject.equals);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('removeInterval throws with undefined', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.removeInterval(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('intersect throws with undefined interval', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.intersect(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('intersectInterval throws with undefined interval', function() {
         var intervals = new TimeIntervalCollection();
         expect(function() {
             intervals.intersectInterval(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 });

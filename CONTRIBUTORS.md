@@ -19,6 +19,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to Cesiu
    * [Ryan Pepley](https://github.com/RyanPepley)
    * [Hannah Pinkos](https://github.com/hpinkos)
    * [Alex Wood](https://github.com/abwood)
+   * [Dan Yankowsky](https://github.com/balefrost)
 * [NICTA](http://www.nicta.com.au/)
    * [Chris Cooper](https://github.com/chris-cooper)
 * [EU Edge](http://euedge.com/)
@@ -37,5 +38,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to Cesiu
 * [Ognjen Bubalo](https://github.com/ognjenb)
 * [Ayudh Das](https://github.com/ayudhDas)
 * [You Lu](https://github.com/YouLu)
+* [David Hite](https://github.com/dav3hit3)
 
-Also see [our contributors page](http://cesium.agi.com/contributors.html) for more information.
+Also see [our contributors page](http://cesiumjs.org/contributors.html) for more information.

@@ -61,11 +61,11 @@ define([
      *
      * @param {Array} positions List of points that the bounding box will enclose.  Each point must have a <code>x</code>, <code>y</code>, and <code>z</code> properties.
      * @param {AxisAlignedBoundingBox} [result] The object onto which to store the result.
-     * @return {AxisAlignedBoundingBox} The modified result parameter or a new AxisAlignedBoundingBox instance if one was not provided.
+     * @returns {AxisAlignedBoundingBox} The modified result parameter or a new AxisAlignedBoundingBox instance if one was not provided.
      *
      * @example
      * // Compute an axis aligned bounding box enclosing two points.
-     * var box = AxisAlignedBoundingBox.fromPoints([new Cartesian3(2, 0, 0), new Cartesian3(-2, 0, 0)]);
+     * var box = Cesium.AxisAlignedBoundingBox.fromPoints([new Cesium.Cartesian3(2, 0, 0), new Cesium.Cartesian3(-2, 0, 0)]);
      */
     AxisAlignedBoundingBox.fromPoints = function(positions, result) {
         if (!defined(result)) {
@@ -124,7 +124,7 @@ define([
      *
      * @param {AxisAlignedBoundingBox} box The bounding box to duplicate.
      * @param {AxisAlignedBoundingBox} [result] The object onto which to store the result.
-     * @return {AxisAlignedBoundingBox} The modified result parameter or a new AxisAlignedBoundingBox instance if none was provided. (Returns undefined if box is undefined)
+     * @returns {AxisAlignedBoundingBox} The modified result parameter or a new AxisAlignedBoundingBox instance if none was provided. (Returns undefined if box is undefined)
      */
     AxisAlignedBoundingBox.clone = function(box, result) {
         if (!defined(box)) {
@@ -148,7 +148,7 @@ define([
      *
      * @param {AxisAlignedBoundingBox} [left] The first AxisAlignedBoundingBox.
      * @param {AxisAlignedBoundingBox} [right] The second AxisAlignedBoundingBox.
-     * @return {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
      */
     AxisAlignedBoundingBox.equals = function(left, right) {
         return (left === right) ||
@@ -168,7 +168,7 @@ define([
      * @param {Cartesian4} plane The coefficients of the plane in the form <code>ax + by + cz + d = 0</code>
      *                           where the coefficients a, b, c, and d are the components x, y, z, and w
      *                           of the {Cartesian4}, respectively.
-     * @return {Intersect} {Intersect.INSIDE} if the entire box is on the side of the plane the normal is pointing,
+     * @returns {Intersect} {Intersect.INSIDE} if the entire box is on the side of the plane the normal is pointing,
      *                     {Intersect.OUTSIDE} if the entire box is on the opposite side, and {Intersect.INTERSETING}
      *                     if the box intersects the plane.
      *
@@ -176,13 +176,14 @@ define([
      * @exception {DeveloperError} plane is required.
      */
     AxisAlignedBoundingBox.intersect = function(box, plane) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(box)) {
             throw new DeveloperError('box is required.');
         }
-
         if (!defined(plane)) {
             throw new DeveloperError('plane is required.');
         }
+        //>>includeEnd('debug');
 
         intersectScratch = Cartesian3.subtract(box.maximum, box.minimum, intersectScratch);
         var h = Cartesian3.multiplyByScalar(intersectScratch, 0.5, intersectScratch); //The positive half diagonal
@@ -206,7 +207,7 @@ define([
      * @memberof AxisAlignedBoundingBox
      *
      * @param {AxisAlignedBoundingBox} [result] The object onto which to store the result.
-     * @return {AxisAlignedBoundingBox} The modified result parameter or a new AxisAlignedBoundingBox instance if one was not provided.
+     * @returns {AxisAlignedBoundingBox} The modified result parameter or a new AxisAlignedBoundingBox instance if one was not provided.
      */
     AxisAlignedBoundingBox.prototype.clone = function(result) {
         return AxisAlignedBoundingBox.clone(this, result);
@@ -219,7 +220,7 @@ define([
      * @param {Cartesian4} plane The coefficients of the plane in the form <code>ax + by + cz + d = 0</code>
      *                           where the coefficients a, b, c, and d are the components x, y, z, and w
      *                           of the {Cartesian4}, respectively.
-     * @return {Intersect} {Intersect.INSIDE} if the entire box is on the side of the plane the normal is pointing,
+     * @returns {Intersect} {Intersect.INSIDE} if the entire box is on the side of the plane the normal is pointing,
      *                     {Intersect.OUTSIDE} if the entire box is on the opposite side, and {Intersect.INTERSETING}
      *                     if the box intersects the plane.
      *
@@ -235,7 +236,7 @@ define([
      * @memberof AxisAlignedBoundingBox
      *
      * @param {AxisAlignedBoundingBox} [right] The right hand side AxisAlignedBoundingBox.
-     * @return {Boolean} <code>true</code> if they are equal, <code>false</code> otherwise.
+     * @returns {Boolean} <code>true</code> if they are equal, <code>false</code> otherwise.
      */
     AxisAlignedBoundingBox.prototype.equals = function(right) {
         return AxisAlignedBoundingBox.equals(this, right);

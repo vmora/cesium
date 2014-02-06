@@ -1,22 +1,20 @@
 /*global define*/
 define([
-        '../../Core/defaultValue',
         '../../Core/defined',
         '../../Core/defineProperties',
         '../../Core/destroyObject',
         '../../Core/DeveloperError',
         '../../Core/Color',
         '../getElement',
-        '../../ThirdParty/knockout'
+        '../subscribeAndEvaluate'
     ], function(
-        defaultValue,
         defined,
         defineProperties,
         destroyObject,
         DeveloperError,
         Color,
         getElement,
-        knockout) {
+        subscribeAndEvaluate) {
     "use strict";
 
     var svgNS = "http://www.w3.org/2000/svg";
@@ -37,11 +35,6 @@ define([
 
     function getElementColor(element) {
         return Color.fromCssColorString(window.getComputedStyle(element).getPropertyValue('color'));
-    }
-
-    function subscribeAndEvaluate(owner, observablePropertyName, callback, target) {
-        callback.call(target, owner[observablePropertyName]);
-        return knockout.getObservable(owner, observablePropertyName).subscribe(callback, target);
     }
 
     //Dynamically builds an SVG element from a JSON object.
@@ -338,19 +331,18 @@ define([
      * Cesium.requestAnimationFrame(tick);
      */
     var Animation = function(container, viewModel) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(container)) {
             throw new DeveloperError('container is required.');
         }
-
         if (!defined(viewModel)) {
             throw new DeveloperError('viewModel is required.');
         }
+        //>>includeEnd('debug');
 
         container = getElement(container);
-
         this._viewModel = viewModel;
         this._container = container;
-
         this._centerX = 0;
         this._centerY = 0;
         this._defsElement = undefined;
@@ -681,7 +673,7 @@ define([
         var scaleX = width / baseWidth;
         var scaleY = height / baseHeight;
 
-        svg.style.cssText = 'width: ' + width + 'px; height: ' + height + 'px; position: absolute; bottom: 0; left: 0;';
+        svg.style.cssText = 'width: ' + width + 'px; height: ' + height + 'px; position: absolute; bottom: 0; left: 0; overflow: hidden;';
         svg.setAttribute('width', width);
         svg.setAttribute('height', height);
         svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);

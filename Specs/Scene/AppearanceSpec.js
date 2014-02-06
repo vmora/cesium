@@ -13,7 +13,7 @@ defineSuite([
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     it('constructor', function() {
-        var material = Material.fromType(undefined, 'Color');
+        var material = Material.fromType('Color');
         var vs =
             'attribute vec3 position3DHigh;\n' +
             'attribute vec3 position3DLow;\n' +
@@ -37,13 +37,17 @@ defineSuite([
             material : material,
             vertexShaderSource : vs,
             fragmentShaderSource : fs,
-            renderState : renderState
+            renderState : renderState,
+            translucent : false,
+            closed : true
         });
 
         expect(appearance.material).toBe(material);
         expect(appearance.vertexShaderSource).toBe(vs);
         expect(appearance.fragmentShaderSource).toBe(fs);
         expect(appearance.renderState).toBe(renderState);
+        expect(appearance.translucent).toEqual(false);
+        expect(appearance.closed).toEqual(true);
     });
 
     it('getFragmentShaderSource', function() {
@@ -60,7 +64,7 @@ defineSuite([
     });
 
     it('getFragmentShaderSource with material', function() {
-        var material = Material.fromType(undefined, 'Color');
+        var material = Material.fromType('Color');
         var fs =
             'varying vec4 v_color;\n' +
             'void main() {\n' +
@@ -86,6 +90,39 @@ defineSuite([
         expect(renderState.cull).toBeDefined();
         expect(renderState.cull.enabled).toEqual(true);
         expect(renderState.cull.face).toEqual(CullFace.BACK);
+    });
+
+    it('isTranslucent', function() {
+        var appearance = new Appearance({
+            translucent : false
+        });
+
+        expect(appearance.isTranslucent()).toEqual(false);
+        appearance.translucent = true;
+        expect(appearance.isTranslucent()).toEqual(true);
+
+        appearance.material = Material.fromType('Color');
+        appearance.material.translucent = false;
+        expect(appearance.isTranslucent()).toEqual(false);
+        appearance.material.translucent = true;
+        expect(appearance.isTranslucent()).toEqual(true);
+    });
+
+    it('getRenderState', function() {
+        var appearance = new Appearance({
+            translucent : false,
+            closed : true,
+            renderState : Appearance.getDefaultRenderState(false, true)
+        });
+
+        var rs = appearance.getRenderState();
+        expect(rs.depthMask).toEqual(true);
+        expect(rs.blending).not.toBeDefined();
+
+        appearance.translucent = true;
+        rs = appearance.getRenderState();
+        expect(rs.depthMask).toEqual(false);
+        expect(rs.blending).toBe(BlendingState.ALPHA_BLEND);
     });
 
 });

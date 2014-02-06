@@ -1,6 +1,5 @@
 /*global define*/
 define([
-        '../../Core/Cartesian2',
         '../../Core/defaultValue',
         '../../Core/defined',
         '../../Core/DeveloperError',
@@ -9,7 +8,6 @@ define([
         '../../Core/Event',
         '../../Core/EventHelper',
         '../../Core/requestAnimationFrame',
-        '../../Core/ScreenSpaceEventType',
         '../../DynamicScene/DataSourceCollection',
         '../../DynamicScene/DataSourceDisplay',
         '../Animation/Animation',
@@ -19,13 +17,15 @@ define([
         '../CesiumWidget/CesiumWidget',
         '../ClockViewModel',
         '../FullscreenButton/FullscreenButton',
+        '../Geocoder/Geocoder',
         '../getElement',
         '../HomeButton/HomeButton',
+        '../InfoBox/InfoBox',
         '../SceneModePicker/SceneModePicker',
-        '../Timeline/Timeline',
-        '../../ThirdParty/knockout'
+        '../SelectionIndicator/SelectionIndicator',
+        '../subscribeAndEvaluate',
+        '../Timeline/Timeline'
     ], function(
-        Cartesian2,
         defaultValue,
         defined,
         DeveloperError,
@@ -34,7 +34,6 @@ define([
         Event,
         EventHelper,
         requestAnimationFrame,
-        ScreenSpaceEventType,
         DataSourceCollection,
         DataSourceDisplay,
         Animation,
@@ -44,11 +43,14 @@ define([
         CesiumWidget,
         ClockViewModel,
         FullscreenButton,
+        Geocoder,
         getElement,
         HomeButton,
+        InfoBox,
         SceneModePicker,
-        Timeline,
-        knockout) {
+        SelectionIndicator,
+        subscribeAndEvaluate,
+        Timeline) {
     "use strict";
 
     function onTimelineScrubfunction(e) {
@@ -76,7 +78,7 @@ define([
             } catch (e) {
                 viewer._useDefaultRenderLoop = false;
                 viewer._renderLoopRunning = false;
-                viewer._onRenderLoopError.raiseEvent(viewer, e);
+                viewer._renderLoopError.raiseEvent(viewer, e);
                 if (viewer._showRenderLoopErrors) {
                     /*global console*/
                     viewer.cesiumWidget.showErrorPanel('An error occurred while rendering.  Rendering has stopped.', e);
@@ -100,17 +102,22 @@ define([
      * @param {Boolean} [options.animation=true] If set to false, the Animation widget will not be created.
      * @param {Boolean} [options.baseLayerPicker=true] If set to false, the BaseLayerPicker widget will not be created.
      * @param {Boolean} [options.fullscreenButton=true] If set to false, the FullscreenButton widget will not be created.
+     * @param {Boolean} [options.geocoder=true] If set to false, the Geocoder widget will not be created.
      * @param {Boolean} [options.homeButton=true] If set to false, the HomeButton widget will not be created.
+     * @param {Boolean} [options.infoBox=true] If set to false, the InfoBox widget will not be created.
      * @param {Boolean} [options.sceneModePicker=true] If set to false, the SceneModePicker widget will not be created.
+     * @param {Boolean} [options.selectionIndicator=true] If set to false, the SelectionIndicator widget will not be created.
      * @param {Boolean} [options.timeline=true] If set to false, the Timeline widget will not be created.
      * @param {ImageryProviderViewModel} [options.selectedImageryProviderViewModel] The view model for the current base imagery layer, if not supplied the first available base layer is used.  This value is only valid if options.baseLayerPicker is set to true.
      * @param {Array} [options.imageryProviderViewModels=createDefaultBaseLayers()] The array of ImageryProviderViewModels to be selectable from the BaseLayerPicker.  This value is only valid if options.baseLayerPicker is set to true.
      * @param {ImageryProvider} [options.imageryProvider=new BingMapsImageryProvider()] The imagery provider to use.  This value is only valid if options.baseLayerPicker is set to false.
      * @param {TerrainProvider} [options.terrainProvider=new EllipsoidTerrainProvider()] The terrain provider to use
-     * @param {Element} [options.fullscreenElement=container] The element to make full screen when the full screen button is pressed.
+     * @param {SkyBox} [options.skyBox] The skybox used to render the stars.  When <code>undefined</code>, the default stars are used.
+     * @param {Element} [options.fullscreenElement=document.body] The element to make full screen when the full screen button is pressed.
      * @param {Boolean} [options.useDefaultRenderLoop=true] True if this widget should control the render loop, false otherwise.
      * @param {Boolean} [options.showRenderLoopErrors=true] If true, this widget will automatically display an HTML panel to the user containing the error, if a render loop error occurs.
-     * @param {Object} [options.contextOptions=undefined] Properties corresponding to <a href='http://www.khronos.org/registry/webgl/specs/latest/#5.2'>WebGLContextAttributes</a> used to create the WebGL context.  This object will be passed to the {@link Scene} constructor.
+     * @param {Boolean} [options.automaticallyTrackFirstDataSourceClock=true] If true, this widget will automatically track the clock settings of the first DataSource that is added, updating if the DataSource's clock changes.  Set this to false if you want to configure the clock independently.
+     * @param {Object} [options.contextOptions=undefined] Context and WebGL creation properties corresponding to {@link Context#options}.
      * @param {SceneMode} [options.sceneMode=SceneMode.SCENE3D] The initial scene mode.
      *
      * @exception {DeveloperError} container is required.
@@ -135,7 +142,7 @@ define([
      *     sceneMode : Cesium.SceneMode.COLUMBUS_VIEW,
      *     //Use standard Cesium terrain
      *     terrainProvider : new Cesium.CesiumTerrainProvider({
-     *         url : 'http://cesium.agi.com/smallterrain',
+     *         url : 'http://cesiumjs.org/smallterrain',
      *         credit : 'Terrain data courtesy Analytical Graphics, Inc.'
      *     }),
      *     //Hide the base layer picker
@@ -143,6 +150,17 @@ define([
      *     //Use OpenStreetMaps
      *     imageryProvider : new Cesium.OpenStreetMapImageryProvider({
      *         url : 'http://tile.openstreetmap.org/'
+     *     }),
+     *     // Use high-res stars downloaded from https://github.com/AnalyticalGraphicsInc/cesium-assets
+     *     skyBox : new Cesium.SkyBox({
+     *         sources : {
+     *           positiveX : 'stars/TychoSkymapII.t3_08192x04096_80_px.jpg',
+     *           negativeX : 'stars/TychoSkymapII.t3_08192x04096_80_mx.jpg',
+     *           positiveY : 'stars/TychoSkymapII.t3_08192x04096_80_py.jpg',
+     *           negativeY : 'stars/TychoSkymapII.t3_08192x04096_80_my.jpg',
+     *           positiveZ : 'stars/TychoSkymapII.t3_08192x04096_80_pz.jpg',
+     *           negativeZ : 'stars/TychoSkymapII.t3_08192x04096_80_mz.jpg'
+     *         }
      *     })
      * });
      *
@@ -153,20 +171,24 @@ define([
      * viewer.extend(Cesium.viewerDynamicObjectMixin);
      *
      * //Show a pop-up alert if we encounter an error when processing a dropped file
-     * viewer.onDropError.addEventListener(function(dropHandler, name, error) {
+     * viewer.dropError.addEventListener(function(dropHandler, name, error) {
      *     console.log(error);
      *     window.alert(error);
      * });
      */
     var Viewer = function(container, options) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(container)) {
             throw new DeveloperError('container is required.');
         }
+        //>>includeEnd('debug');
 
         container = getElement(container);
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         var createBaseLayerPicker = !defined(options.baseLayerPicker) || options.baseLayerPicker !== false;
+
+        //>>includeStart('debug', pragmas.debug);
 
         //If using BaseLayerPicker, imageryProvider is an invalid option
         if (createBaseLayerPicker && defined(options.imageryProvider)) {
@@ -179,6 +201,7 @@ Either specify options.selectedImageryProviderViewModel instead or set options.b
             throw new DeveloperError('options.selectedImageryProviderViewModel is not available when not using the BaseLayerPicker widget. \
 Either specify options.imageryProvider instead or set options.baseLayerPicker to true.');
         }
+        //>>includeEnd('debug')
 
         var viewerContainer = document.createElement('div');
         viewerContainer.className = 'cesium-viewer';
@@ -191,6 +214,7 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
         var cesiumWidget = new CesiumWidget(cesiumWidgetContainer, {
             terrainProvider : options.terrainProvider,
             imageryProvider : createBaseLayerPicker ? false : options.imageryProvider,
+            skyBox : options.skyBox,
             sceneMode : options.sceneMode,
             contextOptions : options.contextOptions,
             useDefaultRenderLoop : false
@@ -201,41 +225,78 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
 
         var clock = cesiumWidget.clock;
         var clockViewModel = new ClockViewModel(clock);
+        var eventHelper = new EventHelper();
 
+        eventHelper.add(clock.onTick, function(clock) {
+            dataSourceDisplay.update(clock.currentTime);
+        });
+
+        //Selection Indicator
+        var selectionIndicator;
+        if (!defined(options.selectionIndicator) || options.selectionIndicator !== false) {
+            var selectionIndicatorContainer = document.createElement('div');
+            selectionIndicatorContainer.className = 'cesium-viewer-selectionIndicatorContainer';
+            viewerContainer.appendChild(selectionIndicatorContainer);
+            selectionIndicator = new SelectionIndicator(selectionIndicatorContainer, cesiumWidget.scene);
+        }
+
+        //Info Box
+        var infoBox;
+        if (!defined(options.infoBox) || options.infoBox !== false) {
+            var infoBoxContainer = document.createElement('div');
+            infoBoxContainer.className = 'cesium-viewer-infoBoxContainer';
+            viewerContainer.appendChild(infoBoxContainer);
+            infoBox = new InfoBox(infoBoxContainer);
+        }
+
+        //Main Toolbar
         var toolbar = document.createElement('div');
         toolbar.className = 'cesium-viewer-toolbar';
         viewerContainer.appendChild(toolbar);
 
+        //Geocoder
+        var geocoder;
+        if (!defined(options.geocoder) || options.geocoder !== false) {
+            var geocoderContainer = document.createElement('div');
+            geocoderContainer.className = 'cesium-viewer-geocoderContainer';
+            toolbar.appendChild(geocoderContainer);
+            geocoder = new Geocoder({
+                container : geocoderContainer,
+                scene : cesiumWidget.scene,
+                ellipsoid : cesiumWidget.centralBody.getEllipsoid()
+            });
+        }
+
         //HomeButton
         var homeButton;
         if (!defined(options.homeButton) || options.homeButton !== false) {
-            var homeButtonContainer = document.createElement('div');
-            homeButtonContainer.className = 'cesium-viewer-homeButtonContainer';
-            toolbar.appendChild(homeButtonContainer);
-            homeButton = new HomeButton(homeButtonContainer, cesiumWidget.scene, cesiumWidget.sceneTransitioner, cesiumWidget.centralBody.getEllipsoid());
+            homeButton = new HomeButton(toolbar, cesiumWidget.scene, cesiumWidget.sceneTransitioner, cesiumWidget.centralBody.getEllipsoid());
+            if (defined(geocoder)) {
+                eventHelper.add(homeButton.viewModel.command.afterExecute, function() {
+                    var viewModel = geocoder.viewModel;
+                    viewModel.searchText = '';
+                    if (viewModel.isSearchInProgress) {
+                        viewModel.search();
+                    }
+                });
+            }
         }
 
         //SceneModePicker
         var sceneModePicker;
         if (!defined(options.sceneModePicker) || options.sceneModePicker !== false) {
-            var sceneModePickerContainer = document.createElement('div');
-            sceneModePickerContainer.className = 'cesium-viewer-sceneModePickerContainer';
-            toolbar.appendChild(sceneModePickerContainer);
-            sceneModePicker = new SceneModePicker(sceneModePickerContainer, cesiumWidget.sceneTransitioner);
+            sceneModePicker = new SceneModePicker(toolbar, cesiumWidget.sceneTransitioner);
         }
 
         //BaseLayerPicker
         var baseLayerPicker;
         if (createBaseLayerPicker) {
-            var baseLayerPickerContainer = document.createElement('div');
-            baseLayerPickerContainer.className = 'cesium-viewer-baseLayerPickerContainer';
-            toolbar.appendChild(baseLayerPickerContainer);
             var providerViewModels = defaultValue(options.imageryProviderViewModels, createDefaultBaseLayers());
-            baseLayerPicker = new BaseLayerPicker(baseLayerPickerContainer, cesiumWidget.centralBody.getImageryLayers(), providerViewModels);
+            baseLayerPicker = new BaseLayerPicker(toolbar, cesiumWidget.centralBody.getImageryLayers(), providerViewModels);
             baseLayerPicker.viewModel.selectedItem = defaultValue(options.selectedImageryProviderViewModel, providerViewModels[0]);
 
             //Grab the dropdown for resize code.
-            var elements = baseLayerPickerContainer.getElementsByClassName('cesium-baseLayerPicker-dropDown');
+            var elements = toolbar.getElementsByClassName('cesium-baseLayerPicker-dropDown');
             this._baseLayerPickerDropDown = elements[0];
         }
 
@@ -265,53 +326,61 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
             var fullscreenContainer = document.createElement('div');
             fullscreenContainer.className = 'cesium-viewer-fullscreenContainer';
             viewerContainer.appendChild(fullscreenContainer);
-            fullscreenButton = new FullscreenButton(fullscreenContainer, defaultValue(options.fullscreenElement, container));
+            fullscreenButton = new FullscreenButton(fullscreenContainer, options.fullscreenElement);
 
             //Subscribe to fullscreenButton.viewModel.isFullscreenEnabled so
             //that we can hide/show the button as well as size the timeline.
-            var fullScreenEnabledCallback = function(value) {
-                if (value) {
-                    fullscreenContainer.style.display = 'block';
-                } else {
-                    fullscreenContainer.style.display = 'none';
-                }
+            this._fullscreenSubscription = subscribeAndEvaluate(fullscreenButton.viewModel, 'isFullscreenEnabled', function(isFullscreenEnabled) {
+                fullscreenContainer.style.display = isFullscreenEnabled ? 'block' : 'none';
                 if (defined(timeline)) {
                     timeline.container.style.right = fullscreenContainer.clientWidth + 'px';
                     timeline.resize();
                 }
-            };
-            this._fullscreenSubscription = knockout.getObservable(fullscreenButton.viewModel, 'isFullscreenEnabled').subscribe(fullScreenEnabledCallback);
-            fullScreenEnabledCallback(fullscreenButton.viewModel.isFullscreenEnabled);
+            });
         } else if (defined(timeline)) {
             timeline.container.style.right = 0;
         }
 
-        var eventHelper = new EventHelper();
+        if (defaultValue(options.automaticallyTrackFirstDataSourceClock, true)) {
+            var trackedDataSource;
+            var changedEventRemovalFunction;
 
-        function updateDataSourceDisplay(clock) {
-            dataSourceDisplay.update(clock.currentTime);
-        }
+            var onDataSourceAdded = function(dataSourceCollection, dataSource) {
+                if (dataSourceCollection.getLength() === 1) {
+                    onDataSourceChanged(dataSource);
+                    changedEventRemovalFunction = eventHelper.add(dataSource.getChangedEvent(), onDataSourceChanged);
+                    trackedDataSource = dataSource;
+                }
+            };
 
-        eventHelper.add(clock.onTick, updateDataSourceDisplay);
+            var onDataSourceRemoved = function(dataSourceCollection, dataSource) {
+                if (trackedDataSource === dataSource) {
+                    changedEventRemovalFunction();
+                    changedEventRemovalFunction = undefined;
+                    trackedDataSource = undefined;
+                }
+            };
 
-        function setClockFromDataSource(dataSourceCollection, dataSource) {
-            if (dataSourceCollection.getLength() === 1) {
+            var onDataSourceChanged = function(dataSource) {
                 var dataSourceClock = dataSource.getClock();
                 if (defined(dataSourceClock)) {
-                    dataSourceClock.clone(clock);
+                    dataSourceClock.getValue(clock);
                     if (defined(timeline)) {
                         timeline.updateFromClock();
                         timeline.zoomTo(dataSourceClock.startTime, dataSourceClock.stopTime);
                     }
                 }
-            }
-        }
+            };
 
-        eventHelper.add(dataSourceCollection.dataSourceAdded, setClockFromDataSource);
+            eventHelper.add(dataSourceCollection.dataSourceAdded, onDataSourceAdded);
+            eventHelper.add(dataSourceCollection.dataSourceRemoved, onDataSourceAdded);
+        }
 
         this._container = container;
         this._element = viewerContainer;
         this._cesiumWidget = cesiumWidget;
+        this._selectionIndicator = selectionIndicator;
+        this._infoBox = infoBox;
         this._dataSourceCollection = dataSourceCollection;
         this._dataSourceDisplay = dataSourceDisplay;
         this._clockViewModel = clockViewModel;
@@ -322,13 +391,14 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
         this._animation = animation;
         this._timeline = timeline;
         this._fullscreenButton = fullscreenButton;
+        this._geocoder = geocoder;
         this._eventHelper = eventHelper;
         this._lastWidth = 0;
         this._lastHeight = 0;
         this._useDefaultRenderLoop = undefined;
         this._renderLoopRunning = false;
         this._showRenderLoopErrors = defaultValue(options.showRenderLoopErrors, true);
-        this._onRenderLoopError = new Event();
+        this._renderLoopError = new Event();
 
         //Start the render loop if not explicitly disabled in options.
         this.useDefaultRenderLoop = defaultValue(options.useDefaultRenderLoop, true);
@@ -354,6 +424,39 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
         cesiumWidget : {
             get : function() {
                 return this._cesiumWidget;
+            }
+        },
+
+        /**
+         * Gets the selection indicator.
+         * @memberof Viewer.prototype
+         * @type {SelectionIndicator}
+         */
+        selectionIndicator : {
+            get : function() {
+                return this._selectionIndicator;
+            }
+        },
+
+        /**
+         * Gets the info box.
+         * @memberof Viewer.prototype
+         * @type {InfoBox}
+         */
+        infoBox : {
+            get : function() {
+                return this._infoBox;
+            }
+        },
+
+        /**
+         * Gets the Geocoder.
+         * @memberof Viewer.prototype
+         * @type {Geocoder}
+         */
+        geocoder : {
+            get : function() {
+                return this._geocoder;
             }
         },
 
@@ -530,9 +633,9 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
          * @memberof Viewer.prototype
          * @type {Event}
          */
-        onRenderLoopError : {
+        renderLoopError : {
             get : function() {
-                return this._onRenderLoopError;
+                return this._renderLoopError;
             }
         },
 
@@ -575,9 +678,12 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
      * @see viewerDynamicObjectMixin
      */
     Viewer.prototype.extend = function(mixin, options) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(mixin)) {
             throw new DeveloperError('mixin is required.');
         }
+        //>>includeEnd('debug')
+
         mixin(this, options);
     };
 
@@ -598,10 +704,15 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
             return;
         }
 
+        var panelMaxHeight = height - 125;
+
         var baseLayerPickerDropDown = this._baseLayerPickerDropDown;
         if (defined(baseLayerPickerDropDown)) {
-            var baseLayerPickerMaxHeight = height - 125;
-            baseLayerPickerDropDown.style.maxHeight = baseLayerPickerMaxHeight + 'px';
+            baseLayerPickerDropDown.style.maxHeight = panelMaxHeight + 'px';
+        }
+
+        if (defined(this._infoBox)) {
+            this._infoBox.viewModel.maxHeight = panelMaxHeight;
         }
 
         var timelineExists = defined(this._timeline);
@@ -690,6 +801,10 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
 
         this._eventHelper.removeAll();
 
+        if (defined(this._geocoder)) {
+            this._geocoder = this._geocoder.destroy();
+        }
+
         if (defined(this._homeButton)) {
             this._homeButton = this._homeButton.destroy();
         }
@@ -717,6 +832,16 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
             this._fullscreenSubscription.dispose();
             this._element.removeChild(this._fullscreenButton.container);
             this._fullscreenButton = this._fullscreenButton.destroy();
+        }
+
+        if (defined(this._infoBox)) {
+            this._element.removeChild(this._infoBox.container);
+            this._infoBox = this._infoBox.destroy();
+        }
+
+        if (defined(this._selectionIndicator)) {
+            this._element.removeChild(this._selectionIndicator.container);
+            this._selectionIndicator = this._selectionIndicator.destroy();
         }
 
         this._clockViewModel = this._clockViewModel.destroy();

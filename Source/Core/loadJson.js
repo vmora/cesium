@@ -11,6 +11,10 @@ define([
         DeveloperError) {
     "use strict";
 
+    var defaultHeaders = {
+        Accept : 'application/json,*/*;q=0.01'
+    };
+
     // note: &#42;&#47;&#42; below is */* but that ends the comment block early
     /**
      * Asynchronously loads the given URL as JSON.  Returns a promise that will resolve to
@@ -31,7 +35,7 @@ define([
      * @exception {DeveloperError} url is required.
      *
      * @example
-     * loadJson('http://someUrl.com/someJson.txt').then(function(jsonData) {
+     * Cesium.loadJson('http://someUrl.com/someJson.txt').then(function(jsonData) {
      *     //Do something with the JSON object
      * }, function() {
      *     // an error occurred
@@ -42,14 +46,18 @@ define([
      * @see <a href='http://wiki.commonjs.org/wiki/Promises/A'>CommonJS Promises/A</a>
      */
     var loadJson = function loadJson(url, headers) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(url)) {
             throw new DeveloperError('url is required.');
         }
+        //>>includeEnd('debug');
 
-        if (defined(headers) && !defined(headers.Accept)) {
+        if (!defined(headers)) {
+            headers = defaultHeaders;
+        } else if (!defined(headers.Accept)) {
             // clone before adding the Accept header
             headers = clone(headers);
-            headers.Accept = 'application/json,*/*;q=0.01';
+            headers.Accept = defaultHeaders.Accept;
         }
 
         return loadText(url, headers).then(function(value) {

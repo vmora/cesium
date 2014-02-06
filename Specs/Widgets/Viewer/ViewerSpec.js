@@ -7,6 +7,7 @@ defineSuite([
          'Widgets/CesiumWidget/CesiumWidget',
          'Widgets/FullscreenButton/FullscreenButton',
          'Widgets/HomeButton/HomeButton',
+         'Widgets/Geocoder/Geocoder',
          'Widgets/SceneModePicker/SceneModePicker',
          'Widgets/Timeline/Timeline',
          'Core/ClockRange',
@@ -27,6 +28,7 @@ defineSuite([
          CesiumWidget,
          FullscreenButton,
          HomeButton,
+         Geocoder,
          SceneModePicker,
          Timeline,
          ClockRange,
@@ -81,6 +83,7 @@ defineSuite([
         viewer = new Viewer(container);
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -109,6 +112,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeUndefined();
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -125,6 +129,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeUndefined();
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -141,6 +146,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeUndefined();
@@ -157,6 +163,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -173,6 +180,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -189,6 +197,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -206,6 +215,7 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
@@ -224,12 +234,30 @@ defineSuite([
         });
         expect(viewer.container).toBe(container);
         expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeInstanceOf(Geocoder);
         expect(viewer.homeButton).toBeInstanceOf(HomeButton);
         expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
         expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
         expect(viewer.animation).toBeUndefined(Animation);
         expect(viewer.timeline).toBeUndefined();
         expect(viewer.fullscreenButton).toBeUndefined();
+        viewer.resize();
+        viewer.render();
+    });
+
+    it('can shut off Geocoder', function() {
+        viewer = new Viewer(container, {
+            geocoder : false
+        });
+        expect(viewer.container).toBe(container);
+        expect(viewer.cesiumWidget).toBeInstanceOf(CesiumWidget);
+        expect(viewer.geocoder).toBeUndefined();
+        expect(viewer.homeButton).toBeInstanceOf(HomeButton);
+        expect(viewer.sceneModePicker).toBeInstanceOf(SceneModePicker);
+        expect(viewer.baseLayerPicker).toBeInstanceOf(BaseLayerPicker);
+        expect(viewer.animation).toBeInstanceOf(Animation);
+        expect(viewer.timeline).toBeInstanceOf(Timeline);
+        expect(viewer.fullscreenButton).toBeInstanceOf(FullscreenButton);
         viewer.resize();
         viewer.render();
     });
@@ -253,7 +281,7 @@ defineSuite([
     });
 
     it('can set contextOptions', function() {
-        var contextOptions = {
+        var webglOptions = {
             alpha : true,
             depth : true, //TODO Change to false when https://bugzilla.mozilla.org/show_bug.cgi?id=745912 is fixed.
             stencil : true,
@@ -261,13 +289,25 @@ defineSuite([
             premultipliedAlpha : false,
             preserveDrawingBuffer : true
         };
+        var contextOptions = {
+            allowTextureFilterAnisotropic : false,
+            webgl : webglOptions
+        };
 
         viewer = new Viewer(container, {
             contextOptions : contextOptions
         });
 
-        var contextAttributes = viewer.scene.getContext()._gl.getContextAttributes();
-        expect(contextAttributes).toEqual(contextOptions);
+        var context = viewer.scene.getContext();
+        var contextAttributes = context._gl.getContextAttributes();
+
+        expect(context.options.allowTextureFilterAnisotropic).toEqual(false);
+        expect(contextAttributes.alpha).toEqual(webglOptions.alpha);
+        expect(contextAttributes.depth).toEqual(webglOptions.depth);
+        expect(contextAttributes.stencil).toEqual(webglOptions.stencil);
+        expect(contextAttributes.antialias).toEqual(webglOptions.antialias);
+        expect(contextAttributes.premultipliedAlpha).toEqual(webglOptions.premultipliedAlpha);
+        expect(contextAttributes.preserveDrawingBuffer).toEqual(webglOptions.preserveDrawingBuffer);
     });
 
     it('can set scene mode', function() {
@@ -317,13 +357,13 @@ defineSuite([
     it('constructor throws with undefined container', function() {
         expect(function() {
             return new Viewer(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws with non-existant string container', function() {
         expect(function() {
             return new Viewer('doesNotExist');
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws if using selectedImageryProviderViewModel with BaseLayerPicker disabled', function() {
@@ -332,7 +372,7 @@ defineSuite([
                 baseLayerPicker : false,
                 selectedImageryProviderViewModel : testProviderViewModel
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws if using imageryProvider with BaseLayerPicker enabled', function() {
@@ -340,22 +380,22 @@ defineSuite([
             return new Viewer(container, {
                 imageryProvider : testProvider
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('extend throws with undefined mixin', function() {
         viewer = new Viewer(container);
         expect(function() {
             return viewer.extend(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
-    it('raises onRenderLoopError and stops the render loop when render throws', function() {
+    it('raises renderLoopError and stops the render loop when render throws', function() {
         viewer = new Viewer(container);
         expect(viewer.useDefaultRenderLoop).toEqual(true);
 
         var spyListener = jasmine.createSpy('listener');
-        viewer.onRenderLoopError.addEventListener(spyListener);
+        viewer.renderLoopError.addEventListener(spyListener);
 
         var error = 'foo';
         viewer.render = function() {
@@ -410,7 +450,7 @@ defineSuite([
             expect(viewer._element.querySelector('.cesium-widget-errorPanel-message').textContent).toEqual(error);
 
             // click the OK button to dismiss the panel
-            EventHelper.fireClick(viewer._element.querySelector('.cesium-widget-button'));
+            EventHelper.fireClick(viewer._element.querySelector('.cesium-button'));
 
             expect(viewer._element.querySelector('.cesium-widget-errorPanel')).toBeNull();
         });
@@ -434,4 +474,4 @@ defineSuite([
             expect(viewer._element.querySelector('.cesium-widget-errorPanel')).toBeNull();
         });
     });
-});
+}, 'WebGL');

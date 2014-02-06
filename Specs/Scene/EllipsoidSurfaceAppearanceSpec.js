@@ -10,8 +10,6 @@ defineSuite([
          'Core/ColorGeometryInstanceAttribute',
          'Renderer/ClearCommand',
          'Specs/render',
-         'Specs/createCanvas',
-         'Specs/destroyCanvas',
          'Specs/createContext',
          'Specs/destroyContext',
          'Specs/createFrameState'
@@ -26,8 +24,6 @@ defineSuite([
          ColorGeometryInstanceAttribute,
          ClearCommand,
          render,
-         createCanvas,
-         destroyCanvas,
          createContext,
          destroyContext,
          createFrameState) {
@@ -57,7 +53,7 @@ defineSuite([
 
         frameState.camera.controller.viewExtent(extent);
         var us = context.getUniformState();
-        us.update(frameState);
+        us.update(context, frameState);
     });
 
     afterAll(function() {
@@ -78,6 +74,7 @@ defineSuite([
         expect(a.faceForward).toEqual(false);
         expect(a.translucent).toEqual(true);
         expect(a.aboveGround).toEqual(false);
+        expect(a.closed).toEqual(false);
     });
 
     it('renders', function() {
@@ -90,4 +87,4 @@ defineSuite([
         expect(context.readPixels()).not.toEqual([0, 0, 0, 0]);
     });
 
-});
+}, 'WebGL');

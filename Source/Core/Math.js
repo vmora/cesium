@@ -165,11 +165,20 @@ define([
     CesiumMath.GRAVITATIONALPARAMETER = 3.986004418e14;
 
     /**
-     * Radius of the sun in meters: 6.995e8
+     * Radius of the sun in meters: 6.955e8
      * @type {Number}
      * @constant
      */
-    CesiumMath.SOLAR_RADIUS = 6.995e8;
+    CesiumMath.SOLAR_RADIUS = 6.955e8;
+
+    /**
+     * The mean radius of the moon, according to the "Report of the IAU/IAG Working Group on
+     * Cartographic Coordinates and Rotational Elements of the Planets and satellites: 2000",
+     * Celestial Mechanics 82: 83-110, 2002.
+     * @type {Number}
+     * @constant
+     */
+    CesiumMath.LUNAR_RADIUS = 1737400.0;
 
     /**
      * 64 * 1024
@@ -184,7 +193,7 @@ define([
      *
      * @param {Number} value The value to return the sign of.
      *
-     * @return {Number} The sign of value.
+     * @returns {Number} The sign of value.
      */
     CesiumMath.sign = function(value) {
         if (value > 0) {
@@ -217,7 +226,7 @@ define([
      *
      * @param value The number whose hyperbolic sine is to be returned.
      *
-     * @return The hyperbolic sine of {@code value}.
+     * @returns The hyperbolic sine of {@code value}.
      *
      */
     CesiumMath.sinh = function(value) {
@@ -245,7 +254,7 @@ define([
      *
      * @param value The number whose hyperbolic cosine is to be returned.
      *
-     * @return The hyperbolic cosine of {@code value}.
+     * @returns The hyperbolic cosine of {@code value}.
      */
     CesiumMath.cosh = function(value) {
         var part1 = Math.pow(Math.E, value);
@@ -375,7 +384,7 @@ define([
     /**
      * Converts degrees to radians.
      * @param {Number} degrees The angle to convert in degrees.
-     * @return {Number} The corresponding angle in radians.
+     * @returns {Number} The corresponding angle in radians.
      */
     CesiumMath.toRadians = function(degrees) {
         return degrees * CesiumMath.RADIANS_PER_DEGREE;
@@ -384,7 +393,7 @@ define([
     /**
      * Converts radians to degrees.
      * @param {Number} radians The angle to convert in radians.
-     * @return {Number} The corresponding angle in degrees.
+     * @returns {Number} The corresponding angle in degrees.
      */
     CesiumMath.toDegrees = function(radians) {
         return radians * CesiumMath.DEGREES_PER_RADIAN;
@@ -395,11 +404,11 @@ define([
      *
      * @param {Number} angle The longitude value, in radians, to convert to the range [<code>-Math.PI</code>, <code>Math.PI</code>).
      *
-     * @return {Number} The equivalent longitude value in the range [<code>-Math.PI</code>, <code>Math.PI</code>).
+     * @returns {Number} The equivalent longitude value in the range [<code>-Math.PI</code>, <code>Math.PI</code>).
      *
      * @example
      * // Convert 270 degrees to -90 degrees longitude
-     * var longitude = CesiumMath.convertLongitudeRange(CesiumMath.toRadians(270.0));
+     * var longitude = Cesium.Math.convertLongitudeRange(Cesium.Math.toRadians(270.0));
      */
     CesiumMath.convertLongitudeRange = function(angle) {
         var twoPi = CesiumMath.TWO_PI;
@@ -419,7 +428,7 @@ define([
     /**
      * Produces an angle in the range 0 <= angle <= 2Pi which is equivalent to the provided angle.
      * @param {Number} angle in radians
-     * @return {Number} The angle in the range ()<code>-CesiumMath.PI</code>, <code>CesiumMath.PI</code>).
+     * @returns {Number} The angle in the range ()<code>-CesiumMath.PI</code>, <code>CesiumMath.PI</code>).
      */
     CesiumMath.negativePiToPi = function(x) {
         var epsilon10 = CesiumMath.EPSILON10;
@@ -440,7 +449,7 @@ define([
     /**
      * Produces an angle in the range -Pi <= angle <= Pi which is equivalent to the provided angle.
      * @param {Number} angle in radians
-     * @return {Number} The angle in the range (0 , <code>CesiumMath.TWO_PI</code>).
+     * @returns {Number} The angle in the range (0 , <code>CesiumMath.TWO_PI</code>).
      */
     CesiumMath.zeroToTwoPi = function(x) {
         var value = x % CesiumMath.TWO_PI;
@@ -466,20 +475,22 @@ define([
      *
      * @param {Number} n The number whose factorial is to be computed.
      *
-     * @return {Number} The factorial of the provided number or undefined if the number is less than 0.
+     * @returns {Number} The factorial of the provided number or undefined if the number is less than 0.
      *
      * @see <a href='http://en.wikipedia.org/wiki/Factorial'>Factorial on Wikipedia</a>.
      *
      * @example
      * //Compute 7!, which is equal to 5040
-     * var computedFactorial = CesiumMath.factorial(7);
+     * var computedFactorial = Cesium.Math.factorial(7);
      *
      * @exception {DeveloperError} A number greater than or equal to 0 is required.
      */
     CesiumMath.factorial = function(n) {
+        //>>includeStart('debug', pragmas.debug);
         if (typeof n !== 'number' || n < 0) {
             throw new DeveloperError('A number greater than or equal to 0 is required.');
         }
+        //>>includeEnd('debug');
 
         var length = factorials.length;
         if (n >= length) {
@@ -500,20 +511,22 @@ define([
      * @param {Number} [maximumValue] The maximum incremented value before rolling over to the minimum value.
      * @param {Number} [minimumValue=0.0] The number reset to after the maximum value has been exceeded.
      *
-     * @return {Number} The incremented number.
+     * @returns {Number} The incremented number.
      *
      * @example
-     * var n = CesiumMath.incrementWrap(5, 10, 0); // returns 6
-     * var n = CesiumMath.incrementWrap(10, 10, 0); // returns 0
+     * var n = Cesium.Math.incrementWrap(5, 10, 0); // returns 6
+     * var n = Cesium.Math.incrementWrap(10, 10, 0); // returns 0
      *
      * @exception {DeveloperError} Maximum value must be greater than minimum value.
      */
     CesiumMath.incrementWrap = function(n, maximumValue, minimumValue) {
         minimumValue = defaultValue(minimumValue, 0.0);
 
+        //>>includeStart('debug', pragmas.debug);
         if (maximumValue <= minimumValue) {
             throw new DeveloperError('Maximum value must be greater than minimum value.');
         }
+        //>>includeEnd('debug');
 
         ++n;
         if (n > maximumValue) {
@@ -529,21 +542,56 @@ define([
      *
      * @param {Number} n The positive integer to test.
      *
-     * @return {Boolean} <code>true</code> if the number if a power of two; otherwise, <code>false</code>.
-     *
-     * @example
-     * var t = CesiumMath.isPowerOfTwo(16); // true
-     * var f = CesiumMath.isPowerOfTwo(20); // false
+     * @returns {Boolean} <code>true</code> if the number if a power of two; otherwise, <code>false</code>.
      *
      * @exception {DeveloperError} A number greater than or equal to 0 is required.
+     *
+     * @example
+     * var t = Cesium.Math.isPowerOfTwo(16); // true
+     * var f = Cesium.Math.isPowerOfTwo(20); // false
      */
     CesiumMath.isPowerOfTwo = function(n) {
+        //>>includeStart('debug', pragmas.debug);
         if (typeof n !== 'number' || n < 0) {
             throw new DeveloperError('A number greater than or equal to 0 is required.');
         }
+        //>>includeEnd('debug');
 
-        var m = defaultValue(n, 0);
-        return (m !== 0) && ((m & (m - 1)) === 0);
+        return (n !== 0) && ((n & (n - 1)) === 0);
+    };
+
+    /**
+     * Computes the next power-of-two integer greater than or equal to the provided positive integer.
+     *
+     * @memberof CesiumMath
+     *
+     * @param {Number} n The positive integer to test.
+     *
+     * @returns {Number} The next power-of-two integer.
+     *
+     * @exception {DeveloperError} A number greater than or equal to 0 is required.
+     *
+     * @example
+     * var n = Cesium.Math.nextPowerOfTwo(29); // 32
+     * var m = Cesium.Math.nextPowerOfTwo(32); // 32
+     */
+    CesiumMath.nextPowerOfTwo = function(n) {
+        //>>includeStart('debug', pragmas.debug);
+        if (typeof n !== 'number' || n < 0) {
+            throw new DeveloperError('A number greater than or equal to 0 is required.');
+        }
+        //>>includeEnd('debug');
+
+        // From http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+        --n;
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16;
+        ++n;
+
+        return n;
     };
 
     /**
@@ -573,9 +621,12 @@ define([
      * @exception {DeveloperError} seed is required.
      */
     CesiumMath.setRandomNumberSeed = function(seed) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(seed)) {
             throw new DeveloperError('seed is required.');
         }
+        //>>includeEnd('debug');
+
         randomNumberGenerator = new MersenneTwister(seed);
     };
 

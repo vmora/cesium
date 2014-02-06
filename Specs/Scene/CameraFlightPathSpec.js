@@ -8,7 +8,8 @@ defineSuite([
          'Core/Extent',
          'Scene/OrthographicFrustum',
          'Scene/SceneMode',
-         'Specs/createScene'
+         'Specs/createScene',
+         'Specs/destroyScene'
      ], function (
          CameraFlightPath,
          Cartesian3,
@@ -18,15 +19,21 @@ defineSuite([
          Extent,
          OrthographicFrustum,
          SceneMode,
-         createScene) {
+         createScene,
+         destroyScene) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
-    var scene, frameState;
+    var scene;
+    var frameState;
 
     beforeEach(function() {
         scene = createScene();
         frameState = scene.getFrameState();
+    });
+
+    afterEach(function() {
+        destroyScene(scene);
     });
 
     function createOrthographicFrustum() {
@@ -49,13 +56,31 @@ defineSuite([
             CameraFlightPath.createAnimation(undefined, {
                 destination : new Cartesian3(1e9, 1e9, 1e9)
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('create animation throws without a destination', function() {
         expect(function() {
             CameraFlightPath.createAnimation(scene, {});
-        }).toThrow();
+        }).toThrowDeveloperError();
+    });
+
+    it('create animation throws with just up and no direction', function() {
+        expect(function() {
+            CameraFlightPath.createAnimation(scene, {
+                destination : Cartesian3.ZERO,
+                up : Cartesian3.UNIT_Z
+            });
+        }).toThrowDeveloperError();
+    });
+
+    it('create animation throws with just direction and no up', function() {
+        expect(function() {
+            CameraFlightPath.createAnimation(scene, {
+                destination : Cartesian3.ZERO,
+                direction : Cartesian3.UNIT_X
+            });
+        }).toThrowDeveloperError();
     });
 
     it('create animation with cartographic throws without a scene', function() {
@@ -63,13 +88,13 @@ defineSuite([
             CameraFlightPath.createAnimationCartographic(undefined, {
                 destination : new Cartographic(0.0, 0.0, 1e6)
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('create animation with cartographic throws without a destination', function() {
         expect(function() {
             CameraFlightPath.createAnimationCartographic(scene, {});
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('create animation with extent throws without a scene', function() {
@@ -83,7 +108,7 @@ defineSuite([
     it('create animation with extent throws without a destination', function() {
         expect(function() {
             CameraFlightPath.createAnimationExtent(scene, {});
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('creates an animation', function() {
@@ -171,7 +196,7 @@ defineSuite([
             CameraFlightPath.createAnimation(scene, {
                 destination : destination
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('createAnimationCartographic throws if mode is morphing', function() {
@@ -181,7 +206,7 @@ defineSuite([
             CameraFlightPath.createAnimationCartographic(scene, {
                 destination : destination
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('createAnimationExtent throws if mode is morphing', function() {
@@ -191,19 +216,19 @@ defineSuite([
             CameraFlightPath.createAnimationExtent(scene, {
                 destination : destination
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('creates an animation in 3d', function() {
         var camera = frameState.camera;
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.negate();
-        var endDirection = startDirection.negate();
-        var endUp = startUp.negate();
+        var endPosition = Cartesian3.negate(startPosition);
+        var endDirection = Cartesian3.negate(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimation(scene, {
@@ -227,14 +252,14 @@ defineSuite([
     it('creates an animation in 3d with cartographic', function() {
         var camera = frameState.camera;
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.negate();
+        var endPosition = Cartesian3.negate(startPosition);
         var endCartographic = frameState.scene2D.projection.getEllipsoid().cartesianToCartographic(endPosition);
-        var endDirection = startDirection.negate();
-        var endUp = startUp.negate();
+        var endDirection = Cartesian3.negate(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimationCartographic(scene, {
@@ -260,14 +285,14 @@ defineSuite([
 
         var startPosition = frameState.scene2D.projection.getEllipsoid().cartographicToCartesian(new Cartographic(CesiumMath.PI, 0, 20));
         camera.position = startPosition;
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.negate();
+        var endPosition = Cartesian3.negate(startPosition);
         var endCartographic = frameState.scene2D.projection.getEllipsoid().cartesianToCartographic(endPosition);
         var extent = new Extent(endCartographic.longitude - 0.0000019, endCartographic.latitude - 0.0000019, endCartographic.longitude + 0.0000019, endCartographic.latitude + 0.0000019);
-        var endDirection = startDirection.negate();
-        var endUp = startUp.negate();
+        var endDirection = Cartesian3.negate(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimationExtent(scene, {
@@ -293,17 +318,17 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimation(scene, {
@@ -329,18 +354,18 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
         var endCartographic = frameState.scene2D.projection.unproject(endPosition);
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimationCartographic(scene, {
@@ -368,18 +393,18 @@ defineSuite([
 
         var startPosition = frameState.scene2D.projection.getEllipsoid().cartographicToCartesian(new Cartographic(CesiumMath.PI, 0, 20));
         camera.position = startPosition;
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
 
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 20.0));
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 20.0));
         var endCartographic = frameState.scene2D.projection.unproject(endPosition);
         var extent = new Extent(endCartographic.longitude - 0.0000019, endCartographic.latitude - 0.0000019, endCartographic.longitude + 0.0000019, endCartographic.latitude + 0.0000019);
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimationExtent(scene, {
@@ -405,19 +430,19 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
         camera.frustum = createOrthographicFrustum();
 
         var startHeight = camera.frustum.right - camera.frustum.left;
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimation(scene, {
@@ -447,20 +472,20 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
         camera.frustum = createOrthographicFrustum();
 
         var startHeight = camera.frustum.right - camera.frustum.left;
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
         var endCartographic = frameState.scene2D.projection.unproject(endPosition);
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimationCartographic(scene, {
@@ -491,21 +516,21 @@ defineSuite([
         camera.controller._mode = SceneMode.SCENE2D;
 
         camera.position = new Cartesian3(CesiumMath.PI, 0.0, 20.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
         camera.frustum = createOrthographicFrustum();
 
         var startHeight = camera.frustum.right - camera.frustum.left;
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 0.0));
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 0.0));
         var endCartographic = frameState.scene2D.projection.unproject(endPosition);
         var extent = new Extent(endCartographic.longitude - 0.0000019, endCartographic.latitude - 0.0000019, endCartographic.longitude + 0.0000019, endCartographic.latitude + 0.0000019);
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var duration = 5000.0;
         var flight = CameraFlightPath.createAnimationExtent(scene, {
@@ -531,7 +556,7 @@ defineSuite([
 
     it('creates a path where the start and end points only differ in height', function() {
         var camera = frameState.camera;
-        var start = camera.position.clone();
+        var start = Cartesian3.clone(camera.position);
         var end = Ellipsoid.WGS84.cartesianToCartographic(start);
         end.height -= 1000000.0;
 
@@ -552,13 +577,13 @@ defineSuite([
     it('does not create a path to the same point', function() {
         var camera = frameState.camera;
         camera.position = new Cartesian3(7000000.0, 0.0, 0.0);
-        camera.direction = camera.position.normalize().negate();
-        camera.up = Cartesian3.UNIT_Z.clone();
-        camera.right = camera.direction.cross(camera.up).normalize();
+        camera.direction = Cartesian3.negate(Cartesian3.normalize(camera.position));
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Z);
+        camera.right = Cartesian3.normalize(Cartesian3.cross(camera.direction, camera.up));
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
         var duration = 3000.0;
         var flight = CameraFlightPath.createAnimation(scene, {
@@ -600,12 +625,12 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
         camera.frustum = createOrthographicFrustum();
         var frustum = camera.frustum;
-        var destination = camera.position.clone();
+        var destination = Cartesian3.clone(camera.position);
         destination.z = Math.max(frustum.right - frustum.left, frustum.top - frustum.bottom);
 
         var flight = CameraFlightPath.createAnimation(scene, {
@@ -620,9 +645,9 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
         camera.frustum = createOrthographicFrustum();
 
         var flight = CameraFlightPath.createAnimation(scene, {
@@ -637,9 +662,9 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
 
         var flight = CameraFlightPath.createAnimation(scene, {
             destination : camera.position
@@ -653,18 +678,18 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
         camera.frustum = createOrthographicFrustum();
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
-        var endDirection = startDirection.clone();
-        var endUp = startUp.negate();
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
+        var endDirection = Cartesian3.clone(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var flight = CameraFlightPath.createAnimation(scene, {
             destination : endPosition,
@@ -687,12 +712,12 @@ defineSuite([
         var camera = frameState.camera;
 
         camera.position = new Cartesian3(0.0, 0.0, 1000.0);
-        camera.direction = Cartesian3.UNIT_Z.negate();
-        camera.up = Cartesian3.UNIT_Y.clone();
-        camera.right = camera.direction.cross(camera.up);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_Z);
+        camera.up = Cartesian3.clone(Cartesian3.UNIT_Y);
+        camera.right = Cartesian3.cross(camera.direction, camera.up);
 
-        var startPosition = camera.position.clone();
-        var endPosition = startPosition.add(new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
+        var startPosition = Cartesian3.clone(camera.position);
+        var endPosition = Cartesian3.add(startPosition, new Cartesian3(-6e6 * Math.PI, 6e6 * CesiumMath.PI_OVER_FOUR, 100.0));
 
         var flight = CameraFlightPath.createAnimation(scene, {
             destination : endPosition,
@@ -707,13 +732,13 @@ defineSuite([
     it('creates an animation in 3d 0 duration', function() {
         var camera = frameState.camera;
 
-        var startPosition = camera.position.clone();
-        var startDirection = camera.direction.clone();
-        var startUp = camera.up.clone();
+        var startPosition = Cartesian3.clone(camera.position);
+        var startDirection = Cartesian3.clone(camera.direction);
+        var startUp = Cartesian3.clone(camera.up);
 
-        var endPosition = startPosition.negate();
-        var endDirection = startDirection.negate();
-        var endUp = startUp.negate();
+        var endPosition = Cartesian3.negate(startPosition);
+        var endDirection = Cartesian3.negate(startDirection);
+        var endUp = Cartesian3.negate(startUp);
 
         var flight = CameraFlightPath.createAnimation(scene, {
             destination : endPosition,
@@ -729,4 +754,4 @@ defineSuite([
         expect(camera.up).toEqualEpsilon(endUp, CesiumMath.EPSILON12);
     });
 
-});
+},'WebGL');

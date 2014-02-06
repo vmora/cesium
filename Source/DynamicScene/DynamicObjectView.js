@@ -41,9 +41,9 @@ define([
         if (modeChanged) {
             that._mode = scene.mode;
             that._screenSpaceCameraController.enableTranslate = false;
-            viewDistance = offset.magnitude();
+            viewDistance = Cartesian3.magnitude(offset);
         } else if (objectChanged) {
-            viewDistance = offset.magnitude();
+            viewDistance = Cartesian3.magnitude(offset);
         } else {
             viewDistance = camera.position.z;
         }
@@ -99,7 +99,7 @@ define([
                 var toInertialDelta = Transforms.computeFixedToIcrfMatrix(deltaTime, update3DMatrix3Scratch2);
                 var toFixed;
 
-                if (!defined(toInertial) || defined(toInertialDelta)) {
+                if (!defined(toInertial) || !defined(toInertialDelta)) {
                     toFixed = Transforms.computeTemeToPseudoFixedMatrix(time, update3DMatrix3Scratch3);
                     toInertial = Matrix3.transpose(toFixed, update3DMatrix3Scratch1);
                     toInertialDelta = Transforms.computeTemeToPseudoFixedMatrix(deltaTime, update3DMatrix3Scratch2);
@@ -180,7 +180,7 @@ define([
             updateColumbusCartesian4.z = projectedPosition.y;
 
             var tranform = camera.transform;
-            tranform.setColumn(3, updateColumbusCartesian4, tranform);
+            Matrix4.setColumn(tranform, 3, updateColumbusCartesian4, tranform);
 
             var controller = that._screenSpaceCameraController;
             controller.enableTranslate = false;
@@ -225,11 +225,11 @@ define([
                 first2dUp.x = 0.0;
                 first2dUp.y = 0.0;
 
-                var theta = startTheta - endTheta;
+                var theta = endTheta - startTheta;
                 var rotation = Quaternion.fromAxisAngle(Cartesian3.UNIT_Z, theta, update3DControllerQuaternion);
-                Matrix3.fromQuaternion(rotation, update3DControllerMatrix3).multiplyByVector(offset, offset);
+                Matrix3.multiplyByVector(Matrix3.fromQuaternion(rotation, update3DControllerMatrix3), offset, offset);
             }
-            offset.normalize(offset).multiplyByScalar(that._lastDistance, offset);
+            Cartesian3.multiplyByScalar(Cartesian3.normalize(offset, offset), that._lastDistance, offset);
             camera.controller.lookAt(offset, Cartesian3.ZERO, Cartesian3.UNIT_Z);
         }
     }
@@ -239,7 +239,7 @@ define([
 
     /**
      * A utility object for tracking an object with the camera.
-     * @alias DynamicObject
+     * @alias DynamicObjectView
      * @constructor
      *
      * @param {DynamicObject} dynamicObject The object to track with the camera.
@@ -300,35 +300,34 @@ define([
     * @exception {DeveloperError} DynamicObjectView.dynamicObject.position is required.
     */
     DynamicObjectView.prototype.update = function(time) {
+        var scene = this.scene;
+        var dynamicObject = this.dynamicObject;
+        var ellipsoid = this.ellipsoid;
+
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required.');
         }
-
-        var scene = this.scene;
         if (!defined(scene)) {
             throw new DeveloperError('DynamicObjectView.scene is required.');
         }
+        if (!defined(dynamicObject)) {
+            throw new DeveloperError('DynamicObjectView.dynamicObject is required.');
+        }
+        if (!defined(ellipsoid)) {
+            throw new DeveloperError('DynamicObjectView.ellipsoid is required.');
+        }
+        if (!defined(dynamicObject.position)) {
+            throw new DeveloperError('dynamicObject.position is required.');
+        }
+        //>>includeEnd('debug');
 
         if (scene !== this._lastScene) {
             this._lastScene = scene;
             this._screenSpaceCameraController = scene.getScreenSpaceCameraController();
         }
 
-        var dynamicObject = this.dynamicObject;
-        if (!defined(dynamicObject)) {
-            throw new DeveloperError('DynamicObjectView.dynamicObject is required.');
-        }
-
-        var ellipsoid = this.ellipsoid;
-        if (!defined(ellipsoid)) {
-            throw new DeveloperError('DynamicObjectView.ellipsoid is required.');
-        }
-
-        var positionProperty = this.dynamicObject.position;
-        if (!defined(positionProperty)) {
-            throw new DeveloperError('dynamicObject.position is required.');
-        }
-
+        var positionProperty = dynamicObject.position;
         var objectChanged = dynamicObject !== this._lastDynamicObject;
 
         //Determine what the current camera offset should be, this is used
@@ -339,7 +338,7 @@ define([
             this._lastDynamicObject = dynamicObject;
 
             var viewFromProperty = this.dynamicObject.viewFrom;
-            if (!defined(viewFromProperty) || defined(viewFromProperty.getValue(time, offset))) {
+            if (!defined(viewFromProperty) || !defined(viewFromProperty.getValue(time, offset))) {
                 Cartesian3.clone(dynamicObjectViewDefaultOffset, offset);
             }
 
@@ -349,10 +348,10 @@ define([
             first2dUp.x = first2dUp.y = 0;
             last2dUp.x = last2dUp.y = 0;
             Cartesian3.clone(offset, this._lastOffset);
-            this._lastDistance = offset.magnitude();
+            this._lastDistance = Cartesian3.magnitude(offset);
 
             //If looking straight down, move the camera slightly south the avoid gimbal lock.
-            if (Cartesian3.equals(offset.normalize(dynamicObjectViewCartesian3Scratch), Cartesian3.UNIT_Z)) {
+            if (Cartesian3.equals(Cartesian3.normalize(offset, dynamicObjectViewCartesian3Scratch), Cartesian3.UNIT_Z)) {
                 offset.y -= 0.01;
             }
         } else if (defined(this._lastOffset)) {

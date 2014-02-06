@@ -26,39 +26,39 @@ defineSuite([
         frustum.bottom = -frustum.top;
         frustum.near = 1.0;
         frustum.far = 2.0;
-        planes = frustum.computeCullingVolume(new Cartesian3(), Cartesian3.UNIT_Z.negate(), Cartesian3.UNIT_Y).planes;
+        planes = frustum.computeCullingVolume(new Cartesian3(), Cartesian3.negate(Cartesian3.UNIT_Z), Cartesian3.UNIT_Y).planes;
     });
 
     it('out of range near plane throws an exception', function() {
         frustum.near = -1.0;
         expect(function() {
-            frustum.getProjectionMatrix();
-        }).toThrow();
+            return frustum.projectionMatrix;
+        }).toThrowDeveloperError();
     });
 
     it('negative far plane throws an exception', function() {
         frustum.far = -1.0;
         expect(function() {
-            frustum.getProjectionMatrix();
-        }).toThrow();
+            return frustum.projectionMatrix;
+        }).toThrowDeveloperError();
     });
 
     it('computeCullingVolume with no position throws an exception', function() {
         expect(function() {
-            frustum.computeCullingVolume();
-        }).toThrow();
+            return frustum.computeCullingVolume();
+        }).toThrowDeveloperError();
     });
 
     it('computeCullingVolume with no direction throws an exception', function() {
         expect(function() {
-            frustum.computeCullingVolume(new Cartesian3());
-        }).toThrow();
+            return frustum.computeCullingVolume(new Cartesian3());
+        }).toThrowDeveloperError();
     });
 
     it('computeCullingVolume with no up throws an exception', function() {
         expect(function() {
-            frustum.computeCullingVolume(new Cartesian3(), new Cartesian3());
-        }).toThrow();
+            return frustum.computeCullingVolume(new Cartesian3(), new Cartesian3());
+        }).toThrowDeveloperError();
     });
 
     it('get frustum left plane', function() {
@@ -102,7 +102,7 @@ defineSuite([
     });
 
     it('get perspective projection matrix', function() {
-        var projectionMatrix = frustum.getProjectionMatrix();
+        var projectionMatrix = frustum.projectionMatrix;
 
         var top = frustum.top;
         var bottom = frustum.bottom;
@@ -123,25 +123,25 @@ defineSuite([
         var near = frustum.near;
 
         var expected = Matrix4.computeInfinitePerspectiveOffCenter(left, right, bottom, top, near);
-        expect(expected).toEqual(frustum.getInfiniteProjectionMatrix());
+        expect(expected).toEqual(frustum.infiniteProjectionMatrix);
     });
 
     it('get pixel size throws without canvas dimensions', function() {
         expect(function() {
             return frustum.getPixelSize();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('get pixel size throws without canvas width less than or equal to zero', function() {
         expect(function() {
             return frustum.getPixelSize(new Cartesian2(0.0, 1.0));
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('get pixel size throws without canvas height less than or equal to zero', function() {
         expect(function() {
             return frustum.getPixelSize(new Cartesian2(1.0, 0.0));
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('get pixel size', function() {
@@ -159,7 +159,7 @@ defineSuite([
         frustum2.near = 1.0;
         frustum2.far = 2.0;
         frustum2.position = new Cartesian3();
-        frustum2.direction =  Cartesian3.UNIT_Z.negate();
+        frustum2.direction =  Cartesian3.negate(Cartesian3.UNIT_Z);
         frustum2.up = Cartesian3.UNIT_Y;
 
         expect(frustum).toEqual(frustum2);
@@ -168,7 +168,19 @@ defineSuite([
     it('throws with undefined frustum parameters', function() {
         var frustum = new PerspectiveOffCenterFrustum();
         expect(function() {
-            return frustum.getInfiniteProjectionMatrix();
-        }).toThrow();
+            return frustum.infiniteProjectionMatrix;
+        }).toThrowDeveloperError();
+    });
+
+    it('clone', function() {
+        var frustum2 = frustum.clone();
+        expect(frustum).toEqual(frustum2);
+    });
+
+    it('clone with result parameter', function() {
+        var result = new PerspectiveOffCenterFrustum();
+        var frustum2 = frustum.clone(result);
+        expect(frustum2).toBe(result);
+        expect(frustum).toEqual(frustum2);
     });
 });

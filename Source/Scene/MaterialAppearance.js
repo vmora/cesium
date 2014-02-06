@@ -45,15 +45,15 @@ define([
      * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
      *
      * @example
-     * var primitive = new Primitive({
-     *   geometryInstances : new GeometryInstance({
-     *     geometry : new WallGeometry({
-            materialSupport :  MaterialAppearance.MaterialSupport.BASIC.vertexFormat,
+     * var primitive = new Cesium.Primitive({
+     *   geometryInstances : new Cesium.GeometryInstance({
+     *     geometry : new Cesium.WallGeometry({
+            materialSupport :  Cesium.MaterialAppearance.MaterialSupport.BASIC.vertexFormat,
      *       // ...
      *     })
      *   }),
-     *   appearance : new MaterialAppearance({
-     *     material : Material.fromType(scene.getContext(), 'Color'),
+     *   appearance : new Cesium.MaterialAppearance({
+     *     material : Cesium.Material.fromType('Color'),
      *     faceForward : true
      *   })
      * });
@@ -77,7 +77,7 @@ define([
          *
          * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
          */
-        this.material = (defined(options.material)) ? options.material : Material.fromType(undefined, Material.ColorType);
+        this.material = (defined(options.material)) ? options.material : Material.fromType(Material.ColorType);
 
         /**
          * The GLSL source code for the vertex shader.
@@ -190,9 +190,29 @@ define([
      *
      * @memberof MaterialAppearance
      *
-     * @return String The full GLSL fragment shader source.
+     * @returns String The full GLSL fragment shader source.
      */
     MaterialAppearance.prototype.getFragmentShaderSource = Appearance.prototype.getFragmentShaderSource;
+
+    /**
+     * Determines if the geometry is translucent based on {@link MaterialAppearance#translucent} and {@link Material#isTranslucent}.
+     *
+     * @memberof MaterialAppearance
+     *
+     * @returns {Boolean} <code>true</code> if the appearance is translucent.
+     */
+    MaterialAppearance.prototype.isTranslucent = Appearance.prototype.isTranslucent;
+
+    /**
+     * Creates a render state.  This is not the final {@link RenderState} instance; instead,
+     * it can contain a subset of render state properties identical to <code>renderState</code>
+     * passed to {@link Context#createRenderState}.
+     *
+     * @memberof MaterialAppearance
+     *
+     * @returns {Object} The render state.
+     */
+    MaterialAppearance.prototype.getRenderState = Appearance.prototype.getRenderState;
 
     /**
      * Determines the type of {@link Material} that is supported by a

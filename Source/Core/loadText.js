@@ -21,7 +21,7 @@ define([
      *
      * @example
      * // load text from a URL, setting a custom header
-     * loadText('http://someUrl.com/someJson.txt', {
+     * Cesium.loadText('http://someUrl.com/someJson.txt', {
      *   'X-Custom-Header' : 'some value'
      * }).then(function(text) {
      *     //Do something with the text
@@ -34,7 +34,10 @@ define([
      * @see <a href='http://wiki.commonjs.org/wiki/Promises/A'>CommonJS Promises/A</a>
      */
     var loadText = function(url, headers) {
-        return loadWithXhr(url, undefined, headers);
+        return loadWithXhr({
+            url : url,
+            headers : headers
+        });
     };
 
     return loadText;

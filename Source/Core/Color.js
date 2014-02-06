@@ -83,7 +83,7 @@ define([
      * @param {Number} [green=255] The green component.
      * @param {Number} [blue=255] The blue component.
      * @param {Number} [alpha=255] The alpha component.
-     * @return {Color} A new color instance.
+     * @returns {Color} A new color instance.
      */
     Color.fromBytes = function(red, green, blue, alpha) {
         red = Color.byteToFloat(defaultValue(red, 255.0));
@@ -109,10 +109,10 @@ define([
      * @memberof Color
      *
      * @param {Number} rgba A single numeric unsigned 32-bit RGBA value.
-     * @return {Color} A new color instance.
+     * @returns {Color} A new color instance.
      *
      * @example
-     * var color = Color.fromRgba(0x67ADDFFF);
+     * var color = Cesium.Color.fromRgba(0x67ADDFFF);
      *
      * @see Color#toRgba
      */
@@ -130,7 +130,7 @@ define([
      * @param {Number} [saturation=0] The saturation value 0...1
      * @param {Number} [lightness=0] The lightness value 0...1
      * @param {Number} [alpha=1.0] The alpha component 0...1
-     * @return {Color} The color object.
+     * @returns {Color} The color object.
      *
      * @see <a href="http://www.w3.org/TR/css3-color/#hsl-color">CSS color values</a>
      */
@@ -181,7 +181,7 @@ define([
      * @param {Number} [options.maximumAlpha=1.0] The minimum alpha value to generate if none was specified.
      * @param {Color} [result] The object to store the result in, if undefined a new instance will be created.
      *
-     * @return {Color} The modified result parameter or a new instance if result was undefined.
+     * @returns {Color} The modified result parameter or a new instance if result was undefined.
      *
      * @exception {DeveloperError} minimumRed must be less than or equal to maximumRed.
      * @exception {DeveloperError} minimumGreen must be less than or equal to maximumGreen.
@@ -190,17 +190,17 @@ define([
      *
      * @example
      * //Create a completely random color
-     * var color = Color.fromRandom();
+     * var color = Cesium.Color.fromRandom();
      *
      * //Create a random shade of yellow.
-     * var color = Color.fromRandom({
+     * var color = Cesium.Color.fromRandom({
      *     red : 1.0,
      *     green : 1.0,
      *     alpha : 1.0
      * });
      *
      * //Create a random bright color.
-     * var color = Color.fromRandom({
+     * var color = Cesium.Color.fromRandom({
      *     minimumRed : 0.75,
      *     minimumGreen : 0.75,
      *     minimumBlue : 0.75,
@@ -215,9 +215,12 @@ define([
             var minimumRed = defaultValue(options.minimumRed, 0);
             var maximumRed = defaultValue(options.maximumRed, 1.0);
 
+            //>>includeStart('debug', pragmas.debug);
             if (minimumRed > maximumRed) {
                 throw new DeveloperError("minimumRed must be less than or equal to maximumRed");
             }
+            //>>includeEnd('debug');
+
             red = minimumRed + (CesiumMath.nextRandomNumber() * (maximumRed - minimumRed));
         }
 
@@ -226,9 +229,12 @@ define([
             var minimumGreen = defaultValue(options.minimumGreen, 0);
             var maximumGreen = defaultValue(options.maximumGreen, 1.0);
 
+            //>>includeStart('debug', pragmas.debug);
             if (minimumGreen > maximumGreen) {
                 throw new DeveloperError("minimumGreen must be less than or equal to maximumGreen");
             }
+            //>>includeEnd('debug');
+
             green = minimumGreen + (CesiumMath.nextRandomNumber() * (maximumGreen - minimumGreen));
         }
 
@@ -237,9 +243,12 @@ define([
             var minimumBlue = defaultValue(options.minimumBlue, 0);
             var maximumBlue = defaultValue(options.maximumBlue, 1.0);
 
+            //>>includeStart('debug', pragmas.debug);
             if (minimumBlue > maximumBlue) {
                 throw new DeveloperError("minimumBlue must be less than or equal to maximumBlue");
             }
+            //>>includeEnd('debug');
+
             blue = minimumBlue + (CesiumMath.nextRandomNumber() * (maximumBlue - minimumBlue));
         }
 
@@ -248,9 +257,12 @@ define([
             var minimumAlpha = defaultValue(options.minimumAlpha, 0);
             var maximumAlpha = defaultValue(options.maximumAlpha, 1.0);
 
+            //>>includeStart('debug', pragmas.debug);
             if (minimumAlpha > maximumAlpha) {
                 throw new DeveloperError("minimumAlpha must be less than or equal to maximumAlpha");
             }
+            //>>includeEnd('debug');
+
             alpha = minimumAlpha + (CesiumMath.nextRandomNumber() * (maximumAlpha - minimumAlpha));
         }
 
@@ -279,24 +291,26 @@ define([
      * @memberof Color
      *
      * @param {String} color The CSS color value in #rgb, #rrggbb, rgb(), rgba(), hsl(), or hsla() format.
-     * @return {Color} The color object, or undefined if the string was not a valid CSS color.
+     * @returns {Color} The color object, or undefined if the string was not a valid CSS color.
      *
      * @exception {DeveloperError} color is required.
      *
      * @example
-     * var cesiumBlue = Color.fromCssColorString('#67ADDF');
-     * var green = Color.fromCssColorString('green');
+     * var cesiumBlue = Cesium.Color.fromCssColorString('#67ADDF');
+     * var green = Cesium.Color.fromCssColorString('green');
      *
      * @see <a href="http://www.w3.org/TR/css3-color">CSS color values</a>
      */
     Color.fromCssColorString = function(color) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(color)) {
             throw new DeveloperError('color is required');
         }
+        //>>includeEnd('debug');
 
         var namedColor = Color[color.toUpperCase()];
         if (defined(namedColor)) {
-            return namedColor.clone();
+            return Color.clone(namedColor);
         }
 
         var matches = rgbMatcher.exec(color);
@@ -350,16 +364,16 @@ define([
      * @exception {DeveloperError} array is required.
      */
     Color.pack = function(value, array, startingIndex) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(value)) {
             throw new DeveloperError('value is required');
         }
-
         if (!defined(array)) {
             throw new DeveloperError('array is required');
         }
+        //>>includeEnd('debug');
 
         startingIndex = defaultValue(startingIndex, 0);
-
         array[startingIndex++] = value.red;
         array[startingIndex++] = value.green;
         array[startingIndex++] = value.blue;
@@ -377,12 +391,13 @@ define([
      * @exception {DeveloperError} array is required.
      */
     Color.unpack = function(array, startingIndex, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(array)) {
             throw new DeveloperError('array is required');
         }
+        //>>includeEnd('debug');
 
         startingIndex = defaultValue(startingIndex, 0);
-
         if (!defined(result)) {
             result = new Color();
         }
@@ -399,7 +414,7 @@ define([
      * @memberof Color
      *
      * @param {Number} number The number to be converted.
-     * @return {number} The converted number.
+     * @returns {number} The converted number.
      */
     Color.byteToFloat = function(number) {
         return number / 255.0;
@@ -411,7 +426,7 @@ define([
      * @memberof Color
      *
      * @param {Number} number The number to be converted.
-     * @return {number} The converted number.
+     * @returns {number} The converted number.
      */
     Color.floatToByte = function(number) {
         return number === 1.0 ? 255.0 : (number * 256.0) | 0;
@@ -423,7 +438,7 @@ define([
      *
      * @param {Color} color The Color to duplicate.
      * @param {Color} [result] The object to store the result in, if undefined a new instance will be created.
-     * @return {Color} The modified result parameter or a new instance if result was undefined. (Returns undefined if color is undefined)
+     * @returns {Color} The modified result parameter or a new instance if result was undefined. (Returns undefined if color is undefined)
      */
     Color.clone = function(color, result) {
         if (!defined(color)) {
@@ -445,7 +460,7 @@ define([
      *
      * @param {Color} left The first Color to compare for equality.
      * @param {Color} right The second Color to compare for equality.
-     * @return {Boolean} <code>true</code> if the Colors are equal; otherwise, <code>false</code>.
+     * @returns {Boolean} <code>true</code> if the Colors are equal; otherwise, <code>false</code>.
      */
     Color.equals = function(left, right) {
         return (left === right) || //
@@ -462,7 +477,7 @@ define([
      * @memberof Color
      *
      * @param {Color} [result] The object to store the result in, if undefined a new instance will be created.
-     * @return {Color} The modified result parameter or a new instance if result was undefined.
+     * @returns {Color} The modified result parameter or a new instance if result was undefined.
      */
     Color.prototype.clone = function(result) {
         return Color.clone(this, result);
@@ -473,7 +488,7 @@ define([
      * @memberof Color
      *
      * @param {Color} other The Color to compare for equality.
-     * @return {Boolean} <code>true</code> if the Colors are equal; otherwise, <code>false</code>.
+     * @returns {Boolean} <code>true</code> if the Colors are equal; otherwise, <code>false</code>.
      */
     Color.prototype.equals = function(other) {
         return Color.equals(this, other);
@@ -485,7 +500,7 @@ define([
      *
      * @param {Color} other The Color to compare for equality.
      * @param {Number} [epsilon=0.0] The epsilon to use for equality testing.
-     * @return {Boolean} <code>true</code> if the Colors are equal within the specified epsilon; otherwise, <code>false</code>.
+     * @returns {Boolean} <code>true</code> if the Colors are equal within the specified epsilon; otherwise, <code>false</code>.
      */
     Color.prototype.equalsEpsilon = function(other, epsilon) {
         return (this === other) || //
@@ -500,7 +515,7 @@ define([
      * Creates a string representing this Color in the format '(red, green, blue, alpha)'.
      * @memberof Color
      *
-     * @return {String} A string representing this Color in the format '(red, green, blue, alpha)'.
+     * @returns {String} A string representing this Color in the format '(red, green, blue, alpha)'.
      */
     Color.prototype.toString = function() {
         return '(' + this.red + ', ' + this.green + ', ' + this.blue + ', ' + this.alpha + ')';
@@ -510,7 +525,7 @@ define([
      * Creates a string containing the CSS color value for this color.
      * @memberof Color
      *
-     * @return {String} The CSS equivalent of this color.
+     * @returns {String} The CSS equivalent of this color.
      * @see <a href="http://www.w3.org/TR/css3-color/#rgba-color">CSS RGB or RGBA color values</a>
      */
     Color.prototype.toCssColorString = function() {
@@ -528,14 +543,23 @@ define([
      * that are in the range of 0 to 255.
      * @memberof Color
      *
-     * @return {Array} An array containing the red, green, blue, alpha values in the range 0 to 255.
+     * @param {Array} [result] The array to store the result in, if undefined a new instance will be created.
+     * @returns {Array} The modified result parameter or a new instance if result was undefined.
      */
-    Color.prototype.toBytes = function() {
+    Color.prototype.toBytes = function(result) {
         var red = Color.floatToByte(this.red);
         var green = Color.floatToByte(this.green);
         var blue = Color.floatToByte(this.blue);
         var alpha = Color.floatToByte(this.alpha);
-        return [red, green, blue, alpha];
+
+        if (!defined(result)) {
+            return [red, green, blue, alpha];
+        }
+        result[0] = red;
+        result[1] = green;
+        result[2] = blue;
+        result[3] = alpha;
+        return result;
     };
 
     /**
@@ -544,10 +568,10 @@ define([
      *
      * @memberof Color
      *
-     * @return {Number} A single numeric unsigned 32-bit RGBA value.
+     * @returns {Number} A single numeric unsigned 32-bit RGBA value.
      *
      * @example
-     * var rgba = Color.BLUE.toRgba();
+     * var rgba = Cesium.Color.BLUE.toRgba();
      *
      * @see Color.fromRgba
      */

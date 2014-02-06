@@ -44,7 +44,7 @@ defineSuite([
     it('constructor throws if no scene is passed.', function() {
         expect(function() {
             return new DynamicPolygonVisualizer();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor sets expected parameters and adds collection to scene.', function() {
@@ -60,7 +60,7 @@ defineSuite([
         visualizer = new DynamicPolygonVisualizer(scene, dynamicObjectCollection);
         expect(function() {
             visualizer.update();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('update does nothing if no dynamicObjectCollection.', function() {
@@ -141,7 +141,7 @@ defineSuite([
         polygon.material = new ColorMaterialProperty();
 
         var ellipse = testObject.ellipse = new DynamicEllipse();
-        ellipse.bearing = new ConstantProperty(0);
+        ellipse.rotation = new ConstantProperty(0);
         ellipse.semiMajorAxis = new ConstantProperty(1000);
         ellipse.semiMinorAxis = new ConstantProperty(1000);
         visualizer.update(new JulianDate());
@@ -212,7 +212,7 @@ defineSuite([
         visualizer.update(time);
         //Clearing won't actually remove the primitive because of the
         //internal cache used by the visualizer, instead it just hides it.
-        dynamicObjectCollection.clear();
+        dynamicObjectCollection.removeAll();
         expect(primitive.show).toEqual(false);
     });
 

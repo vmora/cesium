@@ -1,10 +1,12 @@
 /*global define*/
 define([
+        './defaultValue',
         './defined',
         './DeveloperError',
         './FeatureDetection',
         './Enumeration'
     ], function(
+        defaultValue,
         defined,
         DeveloperError,
         FeatureDetection,
@@ -106,11 +108,11 @@ define([
      *
      * @param {ComponentDatatype} componentDatatype The component datatype to validate.
      *
-     * @return {Boolean} <code>true</code> if the provided component datatype is a valid enumeration value; otherwise, <code>false</code>.
+     * @returns {Boolean} <code>true</code> if the provided component datatype is a valid enumeration value; otherwise, <code>false</code>.
      *
      * @example
-     * if (!ComponentDatatype.validate(componentDatatype)) {
-     *   throw new DeveloperError('componentDatatype must be a valid enumeration value.');
+     * if (!Cesium.ComponentDatatype.validate(componentDatatype)) {
+     *   throw new Cesium.DeveloperError('componentDatatype must be a valid enumeration value.');
      * }
      */
     ComponentDatatype.validate = function(componentDatatype) {
@@ -130,7 +132,7 @@ define([
      * @param {ComponentDatatype} componentDatatype The component data type.
      * @param {Number|Array} valuesOrLength The length of the array to create or an array.
      *
-     * @return {Int8Array|Uint8Array|Int16Array|Uint16Array|Float32Array|Float64Array} A typed array.
+     * @returns {Int8Array|Uint8Array|Int16Array|Uint16Array|Float32Array|Float64Array} A typed array.
      *
      * @exception {DeveloperError} componentDatatype is required.
      * @exception {DeveloperError} valuesOrLength is required.
@@ -138,16 +140,17 @@ define([
      *
      * @example
      * // creates a Float32Array with length of 100
-     * var typedArray = ComponentDatatype.createTypedArray(ComponentDatatype.FLOAT, 100);
+     * var typedArray = Cesium.ComponentDatatype.createTypedArray(Cesium.ComponentDatatype.FLOAT, 100);
      */
     ComponentDatatype.createTypedArray = function(componentDatatype, valuesOrLength) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(componentDatatype)) {
             throw new DeveloperError('componentDatatype is required.');
         }
-
         if (!defined(valuesOrLength)) {
             throw new DeveloperError('valuesOrLength is required.');
         }
+        //>>includeEnd('debug');
 
         switch (componentDatatype.value) {
         case ComponentDatatype.BYTE.value:
@@ -183,27 +186,31 @@ define([
      * @exception {DeveloperError} componentDatatype is not a valid enumeration value.
      */
     ComponentDatatype.createArrayBufferView = function(componentDatatype, buffer, byteOffset, length) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(componentDatatype)) {
             throw new DeveloperError('componentDatatype is required.');
         }
-
         if (!defined(buffer)) {
             throw new DeveloperError('buffer is required.');
         }
+        //>>includeEnd('debug');
+
+        byteOffset = defaultValue(byteOffset, 0);
+        length = defaultValue(length, (buffer.byteLength - byteOffset) / componentDatatype.sizeInBytes);
 
         switch (componentDatatype.value) {
         case ComponentDatatype.BYTE.value:
-            return new Int8Array(buffer, byteOffset);
+            return new Int8Array(buffer, byteOffset, length);
         case ComponentDatatype.UNSIGNED_BYTE.value:
-            return new Uint8Array(buffer, byteOffset);
+            return new Uint8Array(buffer, byteOffset, length);
         case ComponentDatatype.SHORT.value:
-            return new Int16Array(buffer, byteOffset);
+            return new Int16Array(buffer, byteOffset, length);
         case ComponentDatatype.UNSIGNED_SHORT.value:
-            return new Uint16Array(buffer, byteOffset);
+            return new Uint16Array(buffer, byteOffset, length);
         case ComponentDatatype.FLOAT.value:
-            return new Float32Array(buffer, byteOffset);
+            return new Float32Array(buffer, byteOffset, length);
         case ComponentDatatype.DOUBLE.value:
-            return new Float64Array(buffer, byteOffset);
+            return new Float64Array(buffer, byteOffset, length);
         default:
             throw new DeveloperError('componentDatatype is not a valid enumeration value.');
         }

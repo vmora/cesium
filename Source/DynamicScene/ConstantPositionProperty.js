@@ -7,7 +7,8 @@ define([
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/DeveloperError',
-        '../Core/ReferenceFrame'
+        '../Core/ReferenceFrame',
+        './Property'
     ], function(
         ConstantProperty,
         PositionProperty,
@@ -16,7 +17,8 @@ define([
         defined,
         defineProperties,
         DeveloperError,
-        ReferenceFrame) {
+        ReferenceFrame,
+        Property) {
     "use strict";
 
     /**
@@ -33,10 +35,10 @@ define([
      *
      * @example
      * //Create a constant position in the inertial frame.
-     * var constantProperty = new ConstantPositionProperty(new Cartesian3(-4225824.0, 1261219.0, -5148934.0), ReferenceFrame.INERTIAL);
+     * var constantProperty = new Cesium.ConstantPositionProperty(new Cesium.Cartesian3(-4225824.0, 1261219.0, -5148934.0), Cesium.ReferenceFrame.INERTIAL);
      */
     var ConstantPositionProperty = function(value, referenceFrame) {
-        this._property = new ConstantProperty(value, Cartesian3.clone);
+        this._property = new ConstantProperty(value);
         this._referenceFrame = defaultValue(referenceFrame, ReferenceFrame.FIXED);
     };
 
@@ -81,14 +83,32 @@ define([
      * @exception {DeveloperError} referenceFrame is required.
      */
     ConstantPositionProperty.prototype.getValueInReferenceFrame = function(time, referenceFrame, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required.');
         }
         if (!defined(referenceFrame)) {
             throw new DeveloperError('referenceFrame is required.');
         }
+        //>>includeEnd('debug');
+
         var value = this._property.getValue(time, result);
         return PositionProperty.convertToReferenceFrame(time, value, this._referenceFrame, referenceFrame, value);
+    };
+
+    /**
+     * Compares this property to the provided property and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     * @memberof ConstantPositionProperty
+     *
+     * @param {Property} [other] The other property.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     */
+    ConstantPositionProperty.prototype.equals = function(other) {
+        return this === other ||
+               (other instanceof ConstantPositionProperty &&
+                Property.equals(this._property, other._property) &&
+                this._referenceFrame === other._referenceFrame);
     };
 
     return ConstantPositionProperty;

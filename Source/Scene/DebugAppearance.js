@@ -32,21 +32,22 @@ define([
      * @exception {DeveloperError} options.glslDatatype must be float, vec2, vec3, or vec4.
      *
      * @example
-     * var primitive = new Primitive({
+     * var primitive = new Cesium.Primitive({
      *   geometryInstances : // ...
-     *   appearance : new DebugAppearance({
+     *   appearance : new Cesium.DebugAppearance({
      *     attributeName : 'normal'
      *   })
      * });
      */
     var DebugAppearance = function(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
-
         var attributeName = options.attributeName;
 
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(attributeName)) {
             throw new DeveloperError('options.attributeName is required.');
         }
+        //>>includeEnd('debug');
 
         var glslDatatype = defaultValue(options.glslDatatype, 'vec3');
         var varyingName = 'v_' + attributeName;
@@ -182,9 +183,29 @@ define([
      *
      * @memberof DebugAppearance
      *
-     * @return String The full GLSL fragment shader source.
+     * @returns String The full GLSL fragment shader source.
      */
     DebugAppearance.prototype.getFragmentShaderSource = Appearance.prototype.getFragmentShaderSource;
+
+    /**
+     * Determines if the geometry is translucent based on {@link DebugAppearance#translucent}.
+     *
+     * @memberof DebugAppearance
+     *
+     * @returns {Boolean} <code>true</code> if the appearance is translucent.
+     */
+    DebugAppearance.prototype.isTranslucent = Appearance.prototype.isTranslucent;
+
+    /**
+     * Creates a render state.  This is not the final {@link RenderState} instance; instead,
+     * it can contain a subset of render state properties identical to <code>renderState</code>
+     * passed to {@link Context#createRenderState}.
+     *
+     * @memberof DebugAppearance
+     *
+     * @returns {Object} The render state.
+     */
+    DebugAppearance.prototype.getRenderState = Appearance.prototype.getRenderState;
 
     return DebugAppearance;
 });

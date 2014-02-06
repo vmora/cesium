@@ -80,13 +80,13 @@ defineSuite([
     it('removeDuplicates throws without positions', function() {
         expect(function() {
             PolylinePipeline.removeDuplicates();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToSurface throws without positions', function() {
         expect(function() {
             PolylinePipeline.scaleToSurface();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToSurface subdivides in half', function() {
@@ -102,33 +102,33 @@ defineSuite([
         var p1n = Cartesian3.fromArray(newPositions, 0);
         var p3n = Cartesian3.fromArray(newPositions, 3);
         var p2n = Cartesian3.fromArray(newPositions, 6);
-        expect(p1.equalsEpsilon(p1n, CesiumMath.EPSILON4)).toEqual(true);
-        expect(p2.equalsEpsilon(p2n, CesiumMath.EPSILON4)).toEqual(true);
-        expect(p3.equalsEpsilon(p3n, CesiumMath.EPSILON4)).toEqual(true);
+        expect(Cartesian3.equalsEpsilon(p1, p1n, CesiumMath.EPSILON4)).toEqual(true);
+        expect(Cartesian3.equalsEpsilon(p2, p2n, CesiumMath.EPSILON4)).toEqual(true);
+        expect(Cartesian3.equalsEpsilon(p3, p3n, CesiumMath.EPSILON4)).toEqual(true);
     });
 
     it('scaleToGeodeticHeight throws if positions is undefined', function() {
         expect(function() {
             PolylinePipeline.scaleToGeodeticHeight();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToGeodeticHeight throws if height is undefined', function() {
         expect(function() {
             PolylinePipeline.scaleToGeodeticHeight([new Cartesian3()]);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToGeodeticHeight throws if positions.length is not equal to height.length', function() {
         expect(function() {
             PolylinePipeline.scaleToGeodeticHeight([new Cartesian3()], []);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToGeodeticHeight throws if positions.length is not equal to height.length', function() {
         expect(function() {
             PolylinePipeline.scaleToGeodeticHeight([new Cartesian3()], 0, undefined, []);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToGeodeticHeight works with a result parameter', function() {

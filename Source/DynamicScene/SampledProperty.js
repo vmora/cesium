@@ -60,28 +60,29 @@ define([
         return epoch.addSeconds(date);
     }
 
+    var timesSpliceArgs = [];
+    var valuesSpliceArgs = [];
+
     var mergeNewSamples = function(epoch, times, values, newData, packedLength) {
         var newDataIndex = 0;
         var i;
         var prevItem;
         var timesInsertionPoint;
         var valuesInsertionPoint;
-        var timesSpliceArgs;
-        var valuesSpliceArgs;
         var currentTime;
         var nextTime;
 
         while (newDataIndex < newData.length) {
             currentTime = convertDate(newData[newDataIndex], epoch);
             timesInsertionPoint = binarySearch(times, currentTime, JulianDate.compare);
+            var timesSpliceArgsCount = 0;
+            var valuesSpliceArgsCount = 0;
 
             if (timesInsertionPoint < 0) {
                 //Doesn't exist, insert as many additional values as we can.
                 timesInsertionPoint = ~timesInsertionPoint;
-                timesSpliceArgs = [];
 
                 valuesInsertionPoint = timesInsertionPoint * packedLength;
-                valuesSpliceArgs = [];
                 prevItem = undefined;
                 nextTime = times[timesInsertionPoint];
                 while (newDataIndex < newData.length) {
@@ -89,17 +90,22 @@ define([
                     if ((defined(prevItem) && JulianDate.compare(prevItem, currentTime) >= 0) || (defined(nextTime) && JulianDate.compare(currentTime, nextTime) >= 0)) {
                         break;
                     }
-                    timesSpliceArgs.push(currentTime);
+                    timesSpliceArgs[timesSpliceArgsCount++] = currentTime;
                     newDataIndex = newDataIndex + 1;
                     for (i = 0; i < packedLength; i++) {
-                        valuesSpliceArgs.push(newData[newDataIndex]);
+                        valuesSpliceArgs[valuesSpliceArgsCount++] = newData[newDataIndex];
                         newDataIndex = newDataIndex + 1;
                     }
                     prevItem = currentTime;
                 }
 
-                arrayInsert(values, valuesInsertionPoint, valuesSpliceArgs);
-                arrayInsert(times, timesInsertionPoint, timesSpliceArgs);
+                if (timesSpliceArgsCount > 0) {
+                    valuesSpliceArgs.length = valuesSpliceArgsCount;
+                    arrayInsert(values, valuesInsertionPoint, valuesSpliceArgs);
+
+                    timesSpliceArgs.length = timesSpliceArgsCount;
+                    arrayInsert(times, timesInsertionPoint, timesSpliceArgs);
+                }
             } else {
                 //Found an exact match
                 for (i = 0; i < packedLength; i++) {
@@ -125,46 +131,47 @@ define([
      *
      * @example
      * //Create a linearly interpolated Cartesian2
-     * var property = new SampledProperty(Cartesian2);
+     * var property = new Cesium.SampledProperty(Cesium.Cartesian2);
      * property.interpolationDegree = 1;
      * property.interpolationAlgorithm = LinearApproximation;
      *
      * //Populate it with data
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:00:00.00Z`), new Cartesian2(0, 0));
-     * property.addSample(JulianDate.fromIso8601(`2012-08-02T00:00:00.00Z`), new Cartesian2(4, 7));
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:00:00.00Z`), new Cesium.Cartesian2(0, 0));
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-02T00:00:00.00Z`), new Cesium.Cartesian2(4, 7));
      *
      * //Retrieve an interpolated value
-     * var result = property.getValue(JulianDate.fromIso8601(`2012-08-01T12:00:00.00Z`));
+     * var result = property.getValue(Cesium.JulianDate.fromIso8601(`2012-08-01T12:00:00.00Z`));
      *
      * @example
      * //Create a simple numeric SampledProperty that uses third degree Hermite Polynomial Approximation
-     * var property = new SampledProperty(Number);
+     * var property = new Cesium.SampledProperty(Number);
      * property.interpolationDegree = 3;
-     * property.interpolationAlgorithm = HermitePolynomialApproximation;
+     * property.interpolationAlgorithm = Cesium.HermitePolynomialApproximation;
      *
      * //Populate it with data
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:00:00.00Z`), 1.0);
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:01:00.00Z`), 6.0);
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:02:00.00Z`), 12.0);
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:03:30.00Z`), 5.0);
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:06:30.00Z`), 2.0);
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:00:00.00Z`), 1.0);
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:01:00.00Z`), 6.0);
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:02:00.00Z`), 12.0);
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:03:30.00Z`), 5.0);
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:06:30.00Z`), 2.0);
      *
      * //Samples can be added in any order.
-     * property.addSample(JulianDate.fromIso8601(`2012-08-01T00:00:30.00Z`), 6.2);
+     * property.addSample(Cesium.JulianDate.fromIso8601(`2012-08-01T00:00:30.00Z`), 6.2);
      *
      * //Retrieve an interpolated value
-     * var result = property.getValue(JulianDate.fromIso8601(`2012-08-01T00:02:34.00Z`));
+     * var result = property.getValue(Cesium.JulianDate.fromIso8601(`2012-08-01T00:02:34.00Z`));
      */
     var SampledProperty = function(type) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(type)) {
             throw new DeveloperError('type is required.');
         }
+        //>>includeEnd('debug');
 
         var innerType = type;
         if (innerType === Number) {
             innerType = PackableNumber;
         }
-
         var packedInterpolationLength = defaultValue(innerType.packedInterpolationLength, innerType.packedLength);
 
         this._type = type;
@@ -235,9 +242,11 @@ define([
      * @exception {DeveloperError} time is required.
      */
     SampledProperty.prototype.getValue = function(time, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required.');
         }
+        //>>includeEnd('debug');
 
         var innerType = this._innerType;
         var times = this._times;
@@ -337,12 +346,14 @@ define([
      * @exception {DeveloperError} value is required.
      */
     SampledProperty.prototype.addSample = function(time, value) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required.');
         }
         if (!defined(value)) {
             throw new DeveloperError('value is required.');
         }
+        //>>includeEnd('debug');
 
         var innerType = this._innerType;
         var data = [time];
@@ -363,6 +374,7 @@ define([
      * @exception {DeveloperError} times and values must be the same length..
      */
     SampledProperty.prototype.addSamples = function(times, values) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(times)) {
             throw new DeveloperError('times is required.');
         }
@@ -372,6 +384,7 @@ define([
         if (times.length !== values.length) {
             throw new DeveloperError('times and values must be the same length.');
         }
+        //>>includeEnd('debug');
 
         var innerType = this._innerType;
         var length = times.length;
@@ -394,11 +407,58 @@ define([
      * @exception {DeveloperError} packedSamples is required.
      */
     SampledProperty.prototype.addSamplesPackedArray = function(packedSamples, epoch) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(packedSamples)) {
             throw new DeveloperError('packedSamples is required.');
         }
+        //>>includeEnd('debug');
+
         mergeNewSamples(epoch, this._times, this._values, packedSamples, this._innerType.packedLength);
         this._updateTableLength = true;
+    };
+
+    /**
+     * Compares this property to the provided property and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     * @memberof SampledProperty
+     *
+     * @param {Property} [other] The other property.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     */
+    SampledProperty.prototype.equals = function(other) {
+        if (this === other) {
+            return true;
+        }
+        if (!defined(other)) {
+            return false;
+        }
+
+        var times = this._times;
+        var otherTimes = other._times;
+        var length = times.length;
+
+        if (length !== otherTimes.length) {
+            return false;
+        }
+
+        var i;
+        for (i = 0; i < length; i++) {
+            if (!JulianDate.equals(times[i], otherTimes[i])) {
+                return false;
+            }
+        }
+
+        var values = this._values;
+        var otherValues = other._values;
+        for (i = 0; i < length; i++) {
+            if (values[i] !== otherValues[i]) {
+                return false;
+            }
+        }
+
+        return this._type === other._type && //
+               this._interpolationDegree === other._interpolationDegree && //
+               this._interpolationAlgorithm === other._interpolationAlgorithm;
     };
 
     //Exposed for testing.

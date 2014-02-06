@@ -6,7 +6,6 @@ define([
         '../Core/loadXML',
         '../Core/getImagePixels',
         '../Core/throttleRequestByServer',
-        '../Core/writeTextToCanvas',
         '../Core/DeveloperError',
         '../Core/Extent',
         '../Core/Math',
@@ -25,7 +24,6 @@ define([
         loadXML,
         getImagePixels,
         throttleRequestByServer,
-        writeTextToCanvas,
         DeveloperError,
         Extent,
         CesiumMath,
@@ -60,7 +58,7 @@ define([
      * @see TerrainProvider
      *
      * @example
-     * var terrainProvider = new VRTheWorldTerrainProvider({
+     * var terrainProvider = new Cesium.VRTheWorldTerrainProvider({
      *   url : 'http://www.vr-theworld.com/vr-theworld/tiles1.0.0/73/'
      * });
      * centralBody.terrainProvider = terrainProvider;

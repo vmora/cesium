@@ -1,26 +1,28 @@
 /*global defineSuite*/
 defineSuite([
              'DynamicScene/DynamicPointVisualizer',
-             'Specs/createScene',
-             'Specs/destroyScene',
              'DynamicScene/ConstantProperty',
              'DynamicScene/DynamicPoint',
              'DynamicScene/DynamicObjectCollection',
-             'Core/JulianDate',
              'Core/Cartesian3',
              'Core/Color',
-             'Scene/BillboardCollection'
-            ], function(
-              DynamicPointVisualizer,
-              createScene,
-              destroyScene,
-              ConstantProperty,
-              DynamicPoint,
-              DynamicObjectCollection,
-              JulianDate,
-              Cartesian3,
-              Color,
-              BillboardCollection) {
+             'Core/JulianDate',
+             'Core/NearFarScalar',
+             'Scene/BillboardCollection',
+             'Specs/createScene',
+             'Specs/destroyScene'
+         ], function(
+             DynamicPointVisualizer,
+             ConstantProperty,
+             DynamicPoint,
+             DynamicObjectCollection,
+             Cartesian3,
+             Color,
+             JulianDate,
+             NearFarScalar,
+             BillboardCollection,
+             createScene,
+             destroyScene) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -42,7 +44,7 @@ defineSuite([
     it('constructor throws if no scene is passed.', function() {
         expect(function() {
             return new DynamicPointVisualizer();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor sets expected parameters and adds collection to scene.', function() {
@@ -60,7 +62,7 @@ defineSuite([
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
         expect(function() {
             visualizer.update();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('update does nothing if no dynamicObjectCollection.', function() {
@@ -118,6 +120,7 @@ defineSuite([
         point.pixelSize = new ConstantProperty(12.5);
         point.outlineColor = new ConstantProperty(new Color(0.1, 0.2, 0.3, 0.4));
         point.outlineWidth = new ConstantProperty(2.5);
+        point.scaleByDistance = new ConstantProperty(new NearFarScalar());
 
         visualizer.update(time);
 
@@ -128,6 +131,7 @@ defineSuite([
         visualizer.update(time);
         expect(bb.getShow()).toEqual(testObject.point.show.getValue(time));
         expect(bb.getPosition()).toEqual(testObject.position.getValue(time));
+        expect(bb.getScaleByDistance()).toEqual(testObject.point.scaleByDistance.getValue(time));
         expect(bb._visualizerColor).toEqual(testObject.point.color.getValue(time));
         expect(bb._visualizerOutlineColor).toEqual(testObject.point.outlineColor.getValue(time));
         expect(bb._visualizerOutlineWidth).toEqual(testObject.point.outlineWidth.getValue(time));
@@ -145,6 +149,7 @@ defineSuite([
         visualizer.update(time);
         expect(bb.getShow()).toEqual(testObject.point.show.getValue(time));
         expect(bb.getPosition()).toEqual(testObject.position.getValue(time));
+        expect(bb.getScaleByDistance()).toEqual(testObject.point.scaleByDistance.getValue(time));
         expect(bb._visualizerColor).toEqual(testObject.point.color.getValue(time));
         expect(bb._visualizerOutlineColor).toEqual(testObject.point.outlineColor.getValue(time));
         expect(bb._visualizerOutlineWidth).toEqual(testObject.point.outlineWidth.getValue(time));
@@ -174,7 +179,7 @@ defineSuite([
         visualizer.update(time);
         //Clearing won't actually remove the billboard because of the
         //internal cache used by the visualizer, instead it just hides it.
-        dynamicObjectCollection.clear();
+        dynamicObjectCollection.removeAll();
         expect(bb.getShow()).toEqual(false);
     });
 

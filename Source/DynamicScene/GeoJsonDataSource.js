@@ -5,6 +5,7 @@ define([
         '../Core/Color',
         '../Core/defined',
         '../Core/DeveloperError',
+        '../Core/getFilenameFromUri',
         '../Core/RuntimeError',
         '../Core/Ellipsoid',
         '../Core/Event',
@@ -24,6 +25,7 @@ define([
         Color,
         defined,
         DeveloperError,
+        getFilenameFromUri,
         RuntimeError,
         Ellipsoid,
         Event,
@@ -39,6 +41,27 @@ define([
         topojson) {
     "use strict";
 
+    function describe(properties, nameProperty) {
+        var html = '<table class="cesium-geoJsonDataSourceTable">';
+        for ( var key in properties) {
+            if (properties.hasOwnProperty(key)) {
+                if (key === nameProperty) {
+                    continue;
+                }
+                var value = properties[key];
+                if (defined(value)) {
+                    if (typeof value === 'object') {
+                        html += '<tr><td>' + key + '</td><td>' + describe(value) + '</td></tr>';
+                    } else {
+                        html += '<tr><td>' + key + '</td><td>' + value + '</td></tr>';
+                    }
+                }
+            }
+        }
+        html += '</table>';
+        return html;
+    }
+
     //GeoJSON specifies only the Feature object has a usable id property
     //But since "multi" geometries create multiple dynamicObject,
     //we can't use it for them either.
@@ -49,14 +72,51 @@ define([
         } else {
             var i = 2;
             var finalId = id;
-            while (defined(dynamicObjectCollection.getObject(finalId))) {
+            while (defined(dynamicObjectCollection.getById(finalId))) {
                 finalId = id + "_" + i;
                 i++;
             }
             id = finalId;
         }
+
         var dynamicObject = dynamicObjectCollection.getOrCreateObject(id);
         dynamicObject.geoJson = geoJson;
+
+        var properties = geoJson.properties;
+        if (defined(properties)) {
+            //Try and find a good name for the object from its meta-data
+            //TODO: Make both name and description creation user-configurable.
+            var key;
+            var nameProperty;
+            for (key in properties) {
+                if (properties.hasOwnProperty(key)) {
+                    var upperKey = key.toUpperCase();
+                    if (upperKey === 'NAME' || upperKey === 'TITLE') {
+                        nameProperty = key;
+                        dynamicObject.name = properties[key];
+                        break;
+                    }
+                }
+            }
+            if (!defined(nameProperty)) {
+                for (key in properties) {
+                    if (properties.hasOwnProperty(key)) {
+                        if (/name/i.test(key) || /title/i.test(key)) {
+                            nameProperty = key;
+                            dynamicObject.name = properties[key];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var description = describe(properties, nameProperty);
+            dynamicObject.description = {
+                getValue : function() {
+                    return description;
+                }
+            };
+        }
         return dynamicObject;
     }
 
@@ -201,11 +261,11 @@ define([
      *
      * @example
      * //Use a billboard instead of a point.
-     * var dataSource = new GeoJsonDataSource();
+     * var dataSource = new Cesium.GeoJsonDataSource();
      * var defaultPoint = dataSource.defaulPoint;
      * defaultPoint.point = undefined;
-     * var billboard = new DynamicBillboard();
-     * billboard.image = new ConstantProperty('image.png');
+     * var billboard = new Cesium.DynamicBillboard();
+     * billboard.image = new Cesium.ConstantProperty('image.png');
      * defaultPoint.billboard = billboard;
      * dataSource.loadUrl('sample.geojson');
      */
@@ -222,26 +282,26 @@ define([
         //default line
         var defaultLine = new DynamicObject('GeoJsonDataSource.defaultLine');
         var polyline = new DynamicPolyline();
-        polyline.color = new ConstantProperty(Color.YELLOW);
+        var material = new ColorMaterialProperty();
+        material.color = new ConstantProperty(Color.YELLOW);
+        polyline.material = material;
         polyline.width = new ConstantProperty(2);
-        polyline.outlineColor = new ConstantProperty(Color.BLACK);
-        polyline.outlineWidth = new ConstantProperty(1);
         defaultLine.polyline = polyline;
 
         //default polygon
         var defaultPolygon = new DynamicObject('GeoJsonDataSource.defaultPolygon');
 
         polyline = new DynamicPolyline();
-        polyline.color = new ConstantProperty(Color.YELLOW);
+        material = new ColorMaterialProperty();
+        material.color = new ConstantProperty(Color.YELLOW);
+        polyline.material = material;
         polyline.width = new ConstantProperty(1);
-        polyline.outlineColor = new ConstantProperty(Color.BLACK);
-        polyline.outlineWidth = new ConstantProperty(0);
         defaultPolygon.polyline = polyline;
 
         var polygon = new DynamicPolygon();
         defaultPolygon.polygon = polygon;
 
-        var material = new ColorMaterialProperty();
+        material = new ColorMaterialProperty();
         material.color = new ConstantProperty(new Color(1.0, 1.0, 0.0, 0.1));
         polygon.material = material;
 
@@ -266,6 +326,8 @@ define([
          * @type {DynamicObject}
          */
         this.defaultPolygon = defaultPolygon;
+
+        this._name = undefined;
     };
 
     /**
@@ -290,14 +352,6 @@ define([
     };
 
     /**
-     * Since GeoJSON is a static format, this function always returns undefined.
-     * @memberof GeoJsonDataSource
-     */
-    GeoJsonDataSource.prototype.getClock = function() {
-        return undefined;
-    };
-
-    /**
      * Gets the DynamicObjectCollection generated by this data source.
      * @memberof GeoJsonDataSource
      *
@@ -305,6 +359,25 @@ define([
      */
     GeoJsonDataSource.prototype.getDynamicObjectCollection = function() {
         return this._dynamicObjectCollection;
+    };
+
+    /**
+     * Gets the name of this data source.  If the return value of
+     * this function changes, the changed event will be raised.
+     * @memberof GeoJsonDataSource
+     *
+     * @returns {String} The name.
+     */
+    GeoJsonDataSource.prototype.getName = function() {
+        return this._name;
+    };
+
+    /**
+     * Since GeoJSON is a static format, this function always returns undefined.
+     * @memberof GeoJsonDataSource
+     */
+    GeoJsonDataSource.prototype.getClock = function() {
+        return undefined;
     };
 
     /**
@@ -328,9 +401,11 @@ define([
      * @exception {DeveloperError} url is required.
      */
     GeoJsonDataSource.prototype.loadUrl = function(url) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(url)) {
             throw new DeveloperError('url is required.');
         }
+        //>>includeEnd('debug');
 
         var dataSource = this;
         return when(loadJson(url), function(geoJson) {
@@ -358,8 +433,15 @@ define([
      * @exception {RuntimeError} Unknown crs type.
      */
     GeoJsonDataSource.prototype.load = function(geoJson, source) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(geoJson)) {
             throw new DeveloperError('geoJson is required.');
+        }
+        //>>includeEnd('debug');
+
+        this._name = undefined;
+        if (defined(source)) {
+            this._name = getFilenameFromUri(source);
         }
 
         var typeHandler = geoJsonObjectTypes[geoJson.type];
@@ -405,7 +487,7 @@ define([
             }
         }
 
-        this._dynamicObjectCollection.clear();
+        this._dynamicObjectCollection.removeAll();
 
         var dataSource = this;
         return when(crsFunction, function(crsFunction) {

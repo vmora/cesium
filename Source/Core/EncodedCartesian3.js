@@ -33,7 +33,7 @@ define([
          * @type {Cartesian3}
          * @default {@link Cartesian3.ZERO}
          */
-        this.high = Cartesian3.ZERO.clone();
+        this.high = Cartesian3.clone(Cartesian3.ZERO);
 
         /**
          * The low bits for each component.  Bits 7 to 22 store the whole value, and bits 0 to 6 store the fraction.  Bits 23 to 31 are not used.
@@ -44,7 +44,7 @@ define([
          * @type {Cartesian3}
          * @default {@link Cartesian3.ZERO}
          */
-        this.low = Cartesian3.ZERO.clone();
+        this.low = Cartesian3.clone(Cartesian3.ZERO);
     };
 
     /**
@@ -59,18 +59,20 @@ define([
      * @param {Number} value The floating-point value to encode.
      * @param {Object} [result] The object onto which to store the result.
      *
-     * @return {Object} The modified result parameter or a new instance if one was not provided.
+     * @returns {Object} The modified result parameter or a new instance if one was not provided.
      *
      * @exception {DeveloperError} value is required.
      *
      * @example
      * var value = 1234567.1234567;
-     * var splitValue = EncodedCartesian3.encode(value);
+     * var splitValue = Cesium.EncodedCartesian3.encode(value);
      */
     EncodedCartesian3.encode = function(value, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(value)) {
             throw new DeveloperError('value is required');
         }
+        //>>includeEnd('debug');
 
         if (!defined(result)) {
             result = {
@@ -108,18 +110,20 @@ define([
      *
      * @param {Cartesian3} cartesian The cartesian to encode.
      * @param {EncodedCartesian3} [result] The object onto which to store the result.
-     * @return {EncodedCartesian3} The modified result parameter or a new EncodedCartesian3 instance if one was not provided.
+     * @returns {EncodedCartesian3} The modified result parameter or a new EncodedCartesian3 instance if one was not provided.
      *
      * @exception {DeveloperError} cartesian is required.
      *
      * @example
-     * var cart = new Cartesian3(-10000000.0, 0.0, 10000000.0);
-     * var encoded = EncodedCartesian3.fromCartesian(cart);
+     * var cart = new Cesium.Cartesian3(-10000000.0, 0.0, 10000000.0);
+     * var encoded = Cesium.EncodedCartesian3.fromCartesian(cart);
      */
     EncodedCartesian3.fromCartesian = function(cartesian, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(cartesian)) {
             throw new DeveloperError('cartesian is required');
         }
+        //>>includeEnd('debug');
 
         if (!defined(result)) {
             result = new EncodedCartesian3();
@@ -162,28 +166,28 @@ define([
      *
      * @example
      * var positions = [
-     *    new Cartesian3(),
+     *    new Cesium.Cartesian3(),
      *    // ...
      * ];
      * var encodedPositions = new Float32Array(2 * 3 * positions.length);
      * var j = 0;
      * for (var i = 0; i < positions.length; ++i) {
-     *   EncodedCartesian3.writeElement(positions[i], encodedPositions, j);
+     *   Cesium.EncodedCartesian3.writeElement(positions[i], encodedPositions, j);
      *   j += 6;
      * }
      */
     EncodedCartesian3.writeElements = function(cartesian, cartesianArray, index) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(cartesian)) {
             throw new DeveloperError('cartesian is required');
         }
-
         if (!defined(cartesianArray)) {
             throw new DeveloperError('cartesianArray is required');
         }
-
         if (typeof index !== 'number' || index < 0) {
             throw new DeveloperError('index must be a number greater than or equal to 0.');
         }
+        //>>includeEnd('debug');
 
         EncodedCartesian3.fromCartesian(cartesian, encodedP);
         var high = encodedP.high;

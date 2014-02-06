@@ -109,7 +109,7 @@ define([
      *
      * @memberof GeographicTilingScheme
      *
-     * @return {Array} An array containing the tiles at level of detail zero, starting with the
+     * @returns {Array} An array containing the tiles at level of detail zero, starting with the
      * tile in the northwest corner of the globe and followed by the tile (if any) to its east.
      */
     GeographicTilingScheme.prototype.createLevelZeroTiles = function() {
@@ -131,9 +131,11 @@ define([
      * @exception {DeveloperError} <code>extent</code> is required.
      */
     GeographicTilingScheme.prototype.extentToNativeExtent = function(extent, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(extent)) {
             throw new DeveloperError('extent is required.');
         }
+        //>>includeEnd('debug');
 
         var west = CesiumMath.toDegrees(extent.west);
         var south = CesiumMath.toDegrees(extent.south);

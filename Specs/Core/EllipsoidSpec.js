@@ -13,8 +13,8 @@ defineSuite([
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     var radii = new Cartesian3(1.0, 2.0, 3.0);
-    var radiiSquared = radii.multiplyComponents(radii);
-    var radiiToTheFourth = radiiSquared.multiplyComponents(radiiSquared);
+    var radiiSquared = Cartesian3.multiplyComponents(radii, radii);
+    var radiiToTheFourth = Cartesian3.multiplyComponents(radiiSquared, radiiSquared);
     var oneOverRadii = new Cartesian3(1 / radii.x, 1 / radii.y, 1 / radii.z);
     var oneOverRadiiSquared = new Cartesian3(1 / radiiSquared.x, 1 / radiiSquared.y, 1 / radiiSquared.z);
     var minimumRadius = 1.0;
@@ -279,6 +279,42 @@ defineSuite([
         expect(returnedResult).toBeUndefined();
     });
 
+    it('transformPositionToScaledSpace works without a result parameter', function() {
+        var ellipsoid = new Ellipsoid(2.0, 3.0, 4.0);
+        var expected = new Cartesian3(2.0, 2.0, 2.0);
+        var cartesian = new Cartesian3(4.0, 6.0, 8.0);
+        var returnedResult = ellipsoid.transformPositionToScaledSpace(cartesian);
+        expect(returnedResult).toEqualEpsilon(expected, CesiumMath.EPSILON16);
+    });
+
+    it('transformPositionToScaledSpace works with a result parameter', function() {
+        var ellipsoid = new Ellipsoid(2.0, 3.0, 4.0);
+        var expected = new Cartesian3(3.0, 3.0, 3.0);
+        var cartesian = new Cartesian3(6.0, 9.0, 12.0);
+        var result = new Cartesian3();
+        var returnedResult = ellipsoid.transformPositionToScaledSpace(cartesian, result);
+        expect(returnedResult).toBe(result);
+        expect(result).toEqualEpsilon(expected, CesiumMath.EPSILON16);
+    });
+
+    it('transformPositionFromScaledSpace works without a result parameter', function() {
+        var ellipsoid = new Ellipsoid(2.0, 3.0, 4.0);
+        var expected = new Cartesian3(4.0, 6.0, 8.0);
+        var cartesian = new Cartesian3(2.0, 2.0, 2.0);
+        var returnedResult = ellipsoid.transformPositionFromScaledSpace(cartesian);
+        expect(returnedResult).toEqualEpsilon(expected, CesiumMath.EPSILON16);
+    });
+
+    it('transformPositionFromScaledSpace works with a result parameter', function() {
+        var ellipsoid = new Ellipsoid(2.0, 3.0, 4.0);
+        var expected = new Cartesian3(6.0, 9.0, 12.0);
+        var cartesian = new Cartesian3(3.0, 3.0, 3.0);
+        var result = new Cartesian3();
+        var returnedResult = ellipsoid.transformPositionFromScaledSpace(cartesian, result);
+        expect(returnedResult).toBe(result);
+        expect(result).toEqualEpsilon(expected, CesiumMath.EPSILON16);
+    });
+
     it('equals works in all cases', function() {
         var ellipsoid = new Ellipsoid(1.0, 0.0, 0.0);
         expect(ellipsoid.equals(new Ellipsoid(1.0, 0.0, 0.0))).toEqual(true);
@@ -295,19 +331,19 @@ defineSuite([
     it('constructor throws if x less than 0', function() {
         expect(function() {
             return new Ellipsoid(-1, 0, 0);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws if y less than 0', function() {
         expect(function() {
             return new Ellipsoid(0, -1, 0);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws if z less than 0', function() {
         expect(function() {
             return new Ellipsoid(0, 0, -1);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('expect Ellipsoid.geocentricSurfaceNormal is be Cartesian3.normalize', function() {
@@ -317,49 +353,49 @@ defineSuite([
     it('geodeticSurfaceNormalCartographic throws with no cartographic', function() {
         expect(function() {
             Ellipsoid.WGS84.geodeticSurfaceNormalCartographic(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('geodeticSurfaceNormal throws with no cartesian', function() {
         expect(function() {
             Ellipsoid.WGS84.geodeticSurfaceNormal(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('cartographicToCartesian throws with no cartographic', function() {
         expect(function() {
             Ellipsoid.WGS84.cartographicToCartesian(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('cartographicArrayToCartesianArray throws with no cartographics', function() {
         expect(function() {
             Ellipsoid.WGS84.cartographicArrayToCartesianArray(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('cartesianToCartographic throws with no cartesian', function() {
         expect(function() {
             Ellipsoid.WGS84.cartesianToCartographic(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('cartesianArrayToCartographicArray throws with no cartesians', function() {
         expect(function() {
             Ellipsoid.WGS84.cartesianArrayToCartographicArray(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToGeodeticSurface throws with no cartesian', function() {
         expect(function() {
             Ellipsoid.WGS84.scaleToGeodeticSurface(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('scaleToGeocentricSurface throws with no cartesian', function() {
         expect(function() {
             Ellipsoid.WGS84.scaleToGeocentricSurface(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('clone copies any object with the proper structure', function() {

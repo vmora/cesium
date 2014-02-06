@@ -11,8 +11,6 @@ defineSuite([
          'Core/VertexFormat',
          'Renderer/ClearCommand',
          'Specs/render',
-         'Specs/createCanvas',
-         'Specs/destroyCanvas',
          'Specs/createContext',
          'Specs/destroyContext',
          'Specs/createFrameState'
@@ -28,8 +26,6 @@ defineSuite([
          VertexFormat,
          ClearCommand,
          render,
-         createCanvas,
-         destroyCanvas,
          createContext,
          destroyContext,
          createFrameState) {
@@ -54,7 +50,7 @@ defineSuite([
 
         frameState.camera.controller.viewExtent(extent);
         var us = context.getUniformState();
-        us.update(frameState);
+        us.update(context, frameState);
     });
 
     afterAll(function() {
@@ -64,7 +60,7 @@ defineSuite([
     it('constructor throws without attributeName', function() {
         expect(function() {
             return new DebugAppearance();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('default construct with normal, binormal, or tangent attribute name', function() {
@@ -83,6 +79,8 @@ defineSuite([
         expect(a.attributeName).toEqual('normal');
         expect(a.glslDatatype).toEqual('vec3');
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(false, false));
+        expect(a.translucent).toEqual(false);
+        expect(a.closed).toEqual(false);
     });
 
     it('default construct with st attribute name', function() {
@@ -101,6 +99,8 @@ defineSuite([
         expect(a.attributeName).toEqual('st');
         expect(a.glslDatatype).toEqual('vec2');
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(false, false));
+        expect(a.translucent).toEqual(false);
+        expect(a.closed).toEqual(false);
     });
 
     it('debug appearance with float attribute name', function() {
@@ -120,6 +120,8 @@ defineSuite([
         expect(a.attributeName).toEqual('rotation');
         expect(a.glslDatatype).toEqual('float');
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(false, false));
+        expect(a.translucent).toEqual(false);
+        expect(a.closed).toEqual(false);
     });
 
     it('debug appearance with vec3 attribute name', function() {
@@ -139,6 +141,8 @@ defineSuite([
         expect(a.attributeName).toEqual('str');
         expect(a.glslDatatype).toEqual('vec3');
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(false, false));
+        expect(a.translucent).toEqual(false);
+        expect(a.closed).toEqual(false);
     });
 
     it('debug appearance with vec4 attribute name', function() {
@@ -158,6 +162,8 @@ defineSuite([
         expect(a.attributeName).toEqual('quaternion');
         expect(a.glslDatatype).toEqual('vec4');
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(false, false));
+        expect(a.translucent).toEqual(false);
+        expect(a.closed).toEqual(false);
     });
 
     it('debug appearance throws with invalid glsl datatype', function() {
@@ -166,7 +172,7 @@ defineSuite([
                 attributeName : 'invalid_datatype',
                 glslDatatype : 'invalid'
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('renders normal', function() {
@@ -345,4 +351,4 @@ defineSuite([
         primitive = primitive && primitive.destroy();
     });
 
-});
+}, 'WebGL');

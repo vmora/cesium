@@ -8,6 +8,7 @@ defineSuite([
          'Scene/Scene',
          'Scene/SceneMode',
          'Scene/SceneTransitioner',
+         'Scene/SkyBox',
          'Scene/TileCoordinatesImageryProvider',
          'Specs/EventHelper'
      ], function(
@@ -19,6 +20,7 @@ defineSuite([
          Scene,
          SceneMode,
          SceneTransitioner,
+         SkyBox,
          TileCoordinatesImageryProvider,
          EventHelper) {
     "use strict";
@@ -118,8 +120,25 @@ defineSuite([
         expect(widget.centralBody.terrainProvider).toBe(options.terrainProvider);
     });
 
+    it('sets expected options skyBox', function() {
+        var options = {
+            skyBox : new SkyBox({
+                sources : {
+                    positiveX : './Data/Images/Blue.png',
+                    negativeX : './Data/Images/Green.png',
+                    positiveY : './Data/Images/Blue.png',
+                    negativeY : './Data/Images/Green.png',
+                    positiveZ : './Data/Images/Blue.png',
+                    negativeZ : './Data/Images/Green.png'
+                }
+            })
+        };
+        widget = new CesiumWidget(container, options);
+        expect(widget.scene.skyBox).toBe(options.skyBox);
+    });
+
     it('can set contextOptions', function() {
-        var contextOptions = {
+        var webglOptions = {
             alpha : true,
             depth : true, //TODO Change to false when https://bugzilla.mozilla.org/show_bug.cgi?id=745912 is fixed.
             stencil : true,
@@ -127,25 +146,37 @@ defineSuite([
             premultipliedAlpha : false,
             preserveDrawingBuffer : true
         };
+        var contextOptions = {
+            allowTextureFilterAnisotropic : false,
+            webgl : webglOptions
+        };
 
         widget = new CesiumWidget(container, {
             contextOptions : contextOptions
         });
 
-        var contextAttributes = widget.scene.getContext()._gl.getContextAttributes();
-        expect(contextAttributes).toEqual(contextOptions);
+        var context = widget.scene.getContext();
+        var contextAttributes = context._gl.getContextAttributes();
+
+        expect(context.options.allowTextureFilterAnisotropic).toEqual(false);
+        expect(contextAttributes.alpha).toEqual(webglOptions.alpha);
+        expect(contextAttributes.depth).toEqual(webglOptions.depth);
+        expect(contextAttributes.stencil).toEqual(webglOptions.stencil);
+        expect(contextAttributes.antialias).toEqual(webglOptions.antialias);
+        expect(contextAttributes.premultipliedAlpha).toEqual(webglOptions.premultipliedAlpha);
+        expect(contextAttributes.preserveDrawingBuffer).toEqual(webglOptions.preserveDrawingBuffer);
     });
 
     it('throws if no container provided', function() {
         expect(function() {
             return new CesiumWidget(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws if no container id does not exist', function() {
         expect(function() {
             return new CesiumWidget('doesnotexist');
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('raises onRenderLoopError and stops the render loop when render throws', function() {
@@ -187,7 +218,7 @@ defineSuite([
             expect(widget._element.querySelector('.cesium-widget-errorPanel-message').textContent).toEqual(error);
 
             // click the OK button to dismiss the panel
-            EventHelper.fireClick(widget._element.querySelector('.cesium-widget-button'));
+            EventHelper.fireClick(widget._element.querySelector('.cesium-button'));
 
             expect(widget._element.querySelector('.cesium-widget-errorPanel')).toBeNull();
         });
@@ -211,4 +242,4 @@ defineSuite([
             expect(widget._element.querySelector('.cesium-widget-errorPanel')).toBeNull();
         });
     });
-});
+}, 'WebGL');

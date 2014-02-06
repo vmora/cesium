@@ -145,10 +145,12 @@ defineSuite([
 
     it('gets antialias', function() {
         var c = createContext({
-            antialias : false
+            webgl : {
+                antialias : false
+            }
         });
         expect(c.getAntialias()).toEqual(false);
-        c.destroy();
+        destroyContext(c);
     });
 
     it('gets the standard derivatives extension', function() {
@@ -200,14 +202,65 @@ defineSuite([
 
     it('gets maximum texture filter anisotropy', function() {
         if(context.getTextureFilterAnisotropic()) {
-            expect(context.getMaximumTextureFilterAnisotropy() >= 2.0).toEqual(true);
+            expect(context.getMaximumTextureFilterAnisotropy() >= 2).toEqual(true);
         } else {
-            expect(context.getMaximumTextureFilterAnisotropy()).toEqual(1.0);
+            expect(context.getMaximumTextureFilterAnisotropy()).toEqual(1);
         }
     });
 
     it('gets vertex array object extension', function() {
         expect(context.getVertexArrayObject()).toBeDefined();
+    });
+
+    it('get the fragment depth extension', function() {
+        var fs =
+            'void main()\n' +
+            '{\n' +
+            '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
+            '}';
+
+        var pixel = renderFragment(context, fs, 0.5, true);
+        expect(pixel).toEqual([255, 0, 0, 255]);
+
+        var fsDragDepth =
+            '#ifdef GL_EXT_frag_depth\n' +
+            '  #extension GL_EXT_frag_depth : enable\n' +
+            '#endif\n' +
+            'void main()\n' +
+            '{\n' +
+            '  gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);\n' +
+            '#ifdef GL_EXT_frag_depth\n' +
+            '  gl_FragDepthEXT = 0.0;\n' +
+            '#endif\n' +
+            '}';
+
+        pixel = renderFragment(context, fsDragDepth, 1.0, false);
+
+        if (context.getFragmentDepth()) {
+            expect(pixel).toEqual([0, 255, 0, 255]);
+        } else {
+            expect(pixel).toEqual([255, 0, 0, 255]);
+        }
+    });
+
+    it('get the draw buffers extension', function() {
+        expect(context.getDrawBuffers()).toBeDefined();
+    });
+
+    it('get the maximum number of draw buffers', function() {
+        if (context.getDrawBuffers()) {
+            expect(context.getMaximumDrawBuffers()).toBeGreaterThanOrEqualTo(1);
+        } else {
+            expect(context.getMaximumDrawBuffers()).toEqual(1);
+        }
+    });
+
+    it('get the maximum number of color attachments', function() {
+        if (context.getDrawBuffers()) {
+            expect(context.getMaximumColorAttachments()).toBeGreaterThanOrEqualTo(4);
+        } else {
+            expect(context.getMaximumColorAttachments()).toEqual(1);
+        }
     });
 
     it('sets shader program validation', function() {
@@ -253,7 +306,7 @@ defineSuite([
     it('throws when creating a pick ID without an object', function() {
         expect(function() {
             context.createPickId(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('returns undefined when retrieving an object by unknown pick color', function() {
@@ -263,25 +316,19 @@ defineSuite([
     it('throws when getObjectByPickColor is called without a color', function() {
         expect(function() {
             context.getObjectByPickColor(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fails to construct (null canvas)', function() {
         expect(function() {
             return new Context();
-        }).toThrow();
-    });
-
-    it('continueDraw throws without arguments', function() {
-        expect(function() {
-            context.continueDraw();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('isDestroyed', function() {
         var c = createContext();
         expect(c.isDestroyed()).toEqual(false);
-        c.destroy();
+        destroyContext(c);
         expect(c.isDestroyed()).toEqual(true);
     });
 
@@ -289,7 +336,7 @@ defineSuite([
         var c = createContext();
         var destroyableObject = jasmine.createSpyObj('destroyableObject', ['destroy']);
         c.cache.foo = destroyableObject;
-        c.destroy();
+        destroyContext(c);
         expect(destroyableObject.destroy).toHaveBeenCalled();
     });
 
@@ -297,6 +344,18 @@ defineSuite([
         var c = createContext();
         var nonDestroyableObject = {};
         c.cache.foo = nonDestroyableObject;
-        c.destroy();
+        destroyContext(c);
+    });
+
+    it('returns the underling drawingBufferWidth', function() {
+        var c = createContext(undefined, 1024, 768);
+        expect(c.getDrawingBufferWidth()).toBe(1024);
+        destroyContext(c);
+    });
+
+    it('returns the underling drawingBufferHeight', function() {
+        var c = createContext(undefined, 1024, 768);
+        expect(c.getDrawingBufferHeight()).toBe(768);
+        destroyContext(c);
     });
 }, 'WebGL');

@@ -3,12 +3,14 @@ define([
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/DeveloperError',
-        '../Core/TimeIntervalCollection'
+        '../Core/TimeIntervalCollection',
+        './Property'
     ], function(
         defined,
         defineProperties,
         DeveloperError,
-        TimeIntervalCollection) {
+        TimeIntervalCollection,
+        Property) {
     "use strict";
 
     /**
@@ -43,9 +45,11 @@ define([
      * @type {String} The type of material.
      */
     CompositeMaterialProperty.prototype.getType = function(time) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required');
         }
+        //>>includeEnd('debug');
 
         var innerProperty = this._intervals.findDataForIntervalContainingDate(time);
         if (defined(innerProperty)) {
@@ -65,15 +69,31 @@ define([
      * @exception {DeveloperError} time is required.
      */
     CompositeMaterialProperty.prototype.getValue = function(time, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required');
         }
+        //>>includeEnd('debug');
 
         var innerProperty = this._intervals.findDataForIntervalContainingDate(time);
         if (defined(innerProperty)) {
             return innerProperty.getValue(time, result);
         }
         return undefined;
+    };
+
+    /**
+     * Compares this property to the provided property and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     * @memberof CompositeMaterialProperty
+     *
+     * @param {Property} [other] The other property.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     */
+    CompositeMaterialProperty.prototype.equals = function(other) {
+        return this === other || //
+               (other instanceof CompositeMaterialProperty && //
+                this._intervals.equals(other._intervals, Property.equals));
     };
 
     return CompositeMaterialProperty;

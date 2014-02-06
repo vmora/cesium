@@ -3,12 +3,14 @@ defineSuite([
              'DynamicScene/SampledProperty',
              'Core/defined',
              'Core/JulianDate',
-             'Core/LinearApproximation'
+             'Core/LinearApproximation',
+             'Core/LagrangePolynomialApproximation'
      ], function(
              SampledProperty,
              defined,
              JulianDate,
-             LinearApproximation) {
+             LinearApproximation,
+             LagrangePolynomialApproximation) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -286,6 +288,45 @@ defineSuite([
     it('constructor throws without type parameter.', function() {
         expect(function() {
             return new SampledProperty(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
+    });
+
+    it('equals works when interpolators differ', function() {
+        var left = new SampledProperty(Number);
+        left.interpolationAlgorithm = LinearApproximation;
+
+        var right = new SampledProperty(Number);
+        right.interpolationAlgorithm = LinearApproximation;
+
+        expect(left.equals(right)).toEqual(true);
+        right.interpolationAlgorithm = LagrangePolynomialApproximation;
+        expect(left.equals(right)).toEqual(false);
+    });
+
+    it('equals works when interpolator degree differ', function() {
+        var left = new SampledProperty(Number);
+        left.interpolationAlgorithm = LagrangePolynomialApproximation;
+        left.interpolationDegree = 2;
+
+        var right = new SampledProperty(Number);
+        right.interpolationAlgorithm = LagrangePolynomialApproximation;
+        right.interpolationDegree = 2;
+
+        expect(left.equals(right)).toEqual(true);
+        right.interpolationDegree = 3;
+        expect(left.equals(right)).toEqual(false);
+    });
+
+    it('equals works when samples differ', function() {
+        var left = new SampledProperty(Number);
+        var right = new SampledProperty(Number);
+        expect(left.equals(right)).toEqual(true);
+
+        var time = new JulianDate();
+        left.addSample(time, 5);
+        expect(left.equals(right)).toEqual(false);
+
+        right.addSample(time, 5);
+        expect(left.equals(right)).toEqual(true);
     });
 });

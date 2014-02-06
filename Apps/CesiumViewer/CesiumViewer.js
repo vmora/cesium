@@ -74,7 +74,7 @@ define([
             console.error(error);
         };
 
-        viewer.onDropError.addEventListener(function(viewerArg, name, error) {
+        viewer.dropError.addEventListener(function(viewerArg, name, error) {
             showLoadError(name, error);
         });
 
@@ -107,7 +107,7 @@ define([
                     viewer.dataSources.add(source);
 
                     if (defined(endUserOptions.lookAt)) {
-                        var dynamicObject = source.getDynamicObjectCollection().getObject(endUserOptions.lookAt);
+                        var dynamicObject = source.getDynamicObjectCollection().getById(endUserOptions.lookAt);
                         if (defined(dynamicObject)) {
                             viewer.trackedObject = dynamicObject;
                         } else {
@@ -126,7 +126,7 @@ define([
         }
 
         if (endUserOptions.stats) {
-            scene.getPrimitives().add(new PerformanceDisplay());
+            scene.debugShowFramesPerSecond = true;
         }
 
         var theme = endUserOptions.theme;

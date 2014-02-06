@@ -2,6 +2,7 @@
 define([
         '../Core/defaultValue',
         '../Core/defined',
+        '../Core/Cartesian3',
         '../Core/EllipsoidGeometry',
         '../Core/destroyObject',
         '../Core/GeometryPipeline',
@@ -18,6 +19,7 @@ define([
     ], function(
         defaultValue,
         defined,
+        Cartesian3,
         EllipsoidGeometry,
         destroyObject,
         GeometryPipeline,
@@ -47,7 +49,7 @@ define([
      * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid that the atmosphere is drawn around.
      *
      * @example
-     * scene.skyAtmosphere = new SkyAtmosphere();
+     * scene.skyAtmosphere = new Cesium.SkyAtmosphere();
      *
      * @see Scene.skyAtmosphere
      */
@@ -70,7 +72,7 @@ define([
 
         this._fCameraHeight = undefined;
         this._fCameraHeight2 = undefined;
-        this._outerRadius = ellipsoid.getRadii().multiplyByScalar(1.025).getMaximumComponent();
+        this._outerRadius = Cartesian3.getMaximumComponent(Cartesian3.multiplyByScalar(ellipsoid.getRadii(), 1.025));
         var innerRadius = ellipsoid.getMaximumRadius();
         var rayleighScaleDepth = 0.25;
 
@@ -109,7 +111,7 @@ define([
      *
      * @memberof SkyAtmosphere
      *
-     * @return {Ellipsoid}
+     * @returns {Ellipsoid}
      */
     SkyAtmosphere.prototype.getEllipsoid = function() {
         return this._ellipsoid;
@@ -128,8 +130,8 @@ define([
             return undefined;
         }
 
-        // The atmosphere is only rendered during the color pass; it is not pickable, it doesn't cast shadows, etc.
-        if (!frameState.passes.color) {
+        // The atmosphere is only rendered during the render pass; it is not pickable, it doesn't cast shadows, etc.
+        if (!frameState.passes.render) {
             return undefined;
         }
 
@@ -137,13 +139,13 @@ define([
 
         if (!defined(command.vertexArray)) {
             var geometry = EllipsoidGeometry.createGeometry(new EllipsoidGeometry({
-                radii : this._ellipsoid.getRadii().multiplyByScalar(1.025),
+                radii : Cartesian3.multiplyByScalar(this._ellipsoid.getRadii(), 1.025),
                 slicePartitions : 256,
                 stackPartitions : 256
             }));
             command.vertexArray = context.createVertexArrayFromGeometry({
                 geometry : geometry,
-                attributeIndices : GeometryPipeline.createAttributeIndices(geometry),
+                attributeLocations : GeometryPipeline.createAttributeLocations(geometry),
                 bufferUsage : BufferUsage.STATIC_DRAW
             });
             command.primitiveType = PrimitiveType.TRIANGLES;
@@ -169,9 +171,9 @@ define([
             this._spSkyFromAtmosphere = shaderCache.getShaderProgram(vs, SkyAtmosphereFS);
         }
 
-        var cameraPosition = frameState.camera.getPositionWC();
+        var cameraPosition = frameState.camera.positionWC;
 
-        this._fCameraHeight2 = cameraPosition.magnitudeSquared();
+        this._fCameraHeight2 = Cartesian3.magnitudeSquared(cameraPosition);
         this._fCameraHeight = Math.sqrt(this._fCameraHeight2);
 
         if (this._fCameraHeight > this._outerRadius) {
@@ -193,7 +195,7 @@ define([
      *
      * @memberof SkyAtmosphere
      *
-     * @return {Boolean} <code>true</code> if this object was destroyed; otherwise, <code>false</code>.
+     * @returns {Boolean} <code>true</code> if this object was destroyed; otherwise, <code>false</code>.
      *
      * @see SkyAtmosphere#destroy
      */
@@ -211,7 +213,7 @@ define([
      *
      * @memberof SkyAtmosphere
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *

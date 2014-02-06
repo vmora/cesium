@@ -38,8 +38,8 @@ define([
 
     PickFramebuffer.prototype.begin = function(screenSpaceRectangle) {
         var context = this._context;
-        var width = context.getCanvas().clientWidth;
-        var height = context.getCanvas().clientHeight;
+        var width = context.getDrawingBufferWidth();
+        var height = context.getDrawingBufferHeight();
 
         BoundingRectangle.clone(screenSpaceRectangle, this._passState.scissorTest.rectangle);
 
@@ -50,10 +50,10 @@ define([
 
             this._fb = this._fb && this._fb.destroy();
             this._fb = context.createFramebuffer({
-                colorTexture : context.createTexture2D({
+                colorTextures : [context.createTexture2D({
                     width : width,
                     height : height
-                }),
+                })],
                 depthRenderbuffer : context.createRenderbuffer({
                     format : RenderbufferFormat.DEPTH_COMPONENT16
                 })

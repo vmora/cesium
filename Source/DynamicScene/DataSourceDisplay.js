@@ -14,6 +14,7 @@ define([
         './DynamicPolygonVisualizer',
         './DynamicPolylineVisualizer',
         './DynamicPyramidVisualizer',
+        './DynamicVectorVisualizer',
         './VisualizerCollection'
     ], function(
         defaultValue,
@@ -30,6 +31,7 @@ define([
         DynamicPolygonVisualizer,
         DynamicPolylineVisualizer,
         DynamicPyramidVisualizer,
+        DynamicVectorVisualizer,
         VisualizerCollection) {
     "use strict";
 
@@ -41,7 +43,8 @@ define([
                                   DynamicPolygonVisualizer,
                                   DynamicPolylineVisualizer,
                                   DynamicPyramidVisualizer,
-                                  DynamicPathVisualizer];
+                                  DynamicPathVisualizer,
+                                  DynamicVectorVisualizer];
 
     /**
      * Visualizes a collection of {@link DataSource} instances.
@@ -56,12 +59,14 @@ define([
      * @exception {DeveloperError} dataSourceCollection is required.
      */
     var DataSourceDisplay = function(scene, dataSourceCollection, visualizerTypes) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(scene)) {
             throw new DeveloperError('scene is required.');
         }
         if (!defined(dataSourceCollection)) {
             throw new DeveloperError('dataSourceCollection is required.');
         }
+        //>>includeEnd('debug');
 
         this._eventHelper = new EventHelper();
         this._eventHelper.add(dataSourceCollection.dataSourceAdded, this._onDataSourceAdded, this);
@@ -108,7 +113,7 @@ define([
      * If this object was destroyed, it should not be used; calling any function other than
      * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
      *
-     * @return {Boolean} True if this object was destroyed; otherwise, false.
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
      *
      * @see DataSourceDisplay#destroy
      */
@@ -124,7 +129,7 @@ define([
      * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.  Therefore,
      * assign the return value (<code>undefined</code>) to the object as done in the example.
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
@@ -154,9 +159,11 @@ define([
      * @exception {DeveloperError} time is required.
      */
     DataSourceDisplay.prototype.update = function(time) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(time)) {
             throw new DeveloperError('time is required.');
         }
+        //>>includeEnd('debug');
 
         var timeVaryingSources = this._timeVaryingSources;
         var i;

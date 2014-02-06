@@ -11,6 +11,7 @@ defineSuite([
              'Core/Cartesian2',
              'Core/Cartesian3',
              'Core/Color',
+             'Core/NearFarScalar',
              'Scene/Scene',
              'Scene/BillboardCollection',
              'Scene/HorizontalOrigin',
@@ -27,6 +28,7 @@ defineSuite([
               Cartesian2,
               Cartesian3,
               Color,
+              NearFarScalar,
               Scene,
               BillboardCollection,
               HorizontalOrigin,
@@ -52,7 +54,7 @@ defineSuite([
     it('constructor throws if no scene is passed.', function() {
         expect(function() {
             return new DynamicBillboardVisualizer();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor sets expected parameters and adds collection to scene.', function() {
@@ -69,7 +71,7 @@ defineSuite([
         visualizer = new DynamicBillboardVisualizer(scene, dynamicObjectCollection);
         expect(function() {
             visualizer.update();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('update does nothing if no dynamicObjectCollection.', function() {
@@ -149,6 +151,11 @@ defineSuite([
             billboard.horizontalOrigin = new ConstantProperty(HorizontalOrigin.RIGHT);
             billboard.verticalOrigin = new ConstantProperty(VerticalOrigin.TOP);
             billboard.pixelOffset = new ConstantProperty(new Cartesian2(3, 2));
+            billboard.width = new ConstantProperty(15);
+            billboard.height = new ConstantProperty(5);
+            billboard.scaleByDistance = new ConstantProperty(new NearFarScalar());
+            billboard.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+            billboard.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
             visualizer.update(time);
 
@@ -167,7 +174,11 @@ defineSuite([
                     expect(bb.getAlignedAxis()).toEqual(testObject.billboard.alignedAxis.getValue(time));
                     expect(bb.getHorizontalOrigin()).toEqual(testObject.billboard.horizontalOrigin.getValue(time));
                     expect(bb.getVerticalOrigin()).toEqual(testObject.billboard.verticalOrigin.getValue(time));
-                    expect(bb.getPixelOffset()).toEqual(testObject.billboard.pixelOffset.getValue(time));
+                    expect(bb.getWidth()).toEqual(testObject.billboard.width.getValue(time));
+                    expect(bb.getHeight()).toEqual(testObject.billboard.height.getValue(time));
+                    expect(bb.getScaleByDistance()).toEqual(testObject.billboard.scaleByDistance.getValue(time));
+                    expect(bb.getTranslucencyByDistance()).toEqual(testObject.billboard.translucencyByDistance.getValue(time));
+                    expect(bb.getPixelOffsetScaleByDistance()).toEqual(testObject.billboard.pixelOffsetScaleByDistance.getValue(time));
                 }
                 return bb.getShow(); //true once the image is loaded.
             });
@@ -185,6 +196,11 @@ defineSuite([
             billboard.horizontalOrigin = new ConstantProperty(HorizontalOrigin.LEFT);
             billboard.verticalOrigin = new ConstantProperty(VerticalOrigin.BOTTOM);
             billboard.pixelOffset = new ConstantProperty(new Cartesian2(2, 3));
+            billboard.width = new ConstantProperty(17);
+            billboard.height = new ConstantProperty(12);
+            billboard.scaleByDistance = new ConstantProperty(new NearFarScalar());
+            billboard.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+            billboard.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
             waitsFor(function() {
                 visualizer.update(time);
@@ -199,6 +215,11 @@ defineSuite([
                     expect(bb.getHorizontalOrigin()).toEqual(testObject.billboard.horizontalOrigin.getValue(time));
                     expect(bb.getVerticalOrigin()).toEqual(testObject.billboard.verticalOrigin.getValue(time));
                     expect(bb.getPixelOffset()).toEqual(testObject.billboard.pixelOffset.getValue(time));
+                    expect(bb.getWidth()).toEqual(testObject.billboard.width.getValue(time));
+                    expect(bb.getHeight()).toEqual(testObject.billboard.height.getValue(time));
+                    expect(bb.getScaleByDistance()).toEqual(testObject.billboard.scaleByDistance.getValue(time));
+                    expect(bb.getTranslucencyByDistance()).toEqual(testObject.billboard.translucencyByDistance.getValue(time));
+                    expect(bb.getPixelOffsetScaleByDistance()).toEqual(testObject.billboard.pixelOffsetScaleByDistance.getValue(time));
                 }
                 return imageReady;
             });
@@ -238,7 +259,7 @@ defineSuite([
             if (bb.getShow()) {
                 //Clearing won't actually remove the billboard because of the
                 //internal cache used by the visualizer, instead it just hides it.
-                dynamicObjectCollection.clear();
+                dynamicObjectCollection.removeAll();
                 expect(bb.getShow()).toEqual(false);
                 return true;
             }

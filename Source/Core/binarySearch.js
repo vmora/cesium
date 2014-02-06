@@ -21,7 +21,7 @@ define([
      *        the function should return a negative value.  If it is greater, the function should return
      *        a positive value.  If the items are equal, it should return 0.
      *
-     * @return {Number} The index of <code>itemToFind</code> in the array, if it exists.  If <code>itemToFind</code>
+     * @returns {Number} The index of <code>itemToFind</code> in the array, if it exists.  If <code>itemToFind</code>
      *        does not exist, the return value is a negative number which is the bitwise complement (~)
      *        of the index before which the itemToFind should be inserted in order to maintain the
      *        sorted order of the array.
@@ -36,9 +36,10 @@ define([
      *     return a - b;
      * };
      * var numbers = [0, 2, 4, 6, 8];
-     * var index = binarySearch(numbers, 6, comparator); // 3
+     * var index = Cesium.binarySearch(numbers, 6, comparator); // 3
      */
     var binarySearch = function(array, itemToFind, comparator) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(array)) {
             throw new DeveloperError('array is required.');
         }
@@ -48,6 +49,7 @@ define([
         if (!defined(comparator)) {
             throw new DeveloperError('comparator is required.');
         }
+        //>>includeEnd('debug');
 
         var low = 0;
         var high = array.length - 1;

@@ -22,6 +22,7 @@ require({
     'dojo/dom-class',
     'dojo/dom-construct',
     'dojo/io-query',
+    'dojo/query',
     'dojo/_base/fx',
     'dojo/_base/window',
     'dojo/_base/xhr',
@@ -53,6 +54,7 @@ require({
     domClass,
     domConstruct,
     ioQuery,
+    query,
     fx,
     win,
     xhr,
@@ -71,14 +73,21 @@ require({
         }
     }).play();
 
+    var numberOfNewConsoleMessages = 0;
+
     var logOutput = document.getElementById('logOutput');
-    function appendConsole(className, message) {
+    function appendConsole(className, message, showConsole) {
         var ele = document.createElement('span');
         ele.className = className;
         ele.textContent = message + '\n';
         logOutput.appendChild(ele);
         logOutput.parentNode.scrollTop = logOutput.clientHeight + 8 - logOutput.parentNode.clientHeight;
-        hideGallery();
+        if (showConsole) {
+            hideGallery();
+        } else {
+            ++numberOfNewConsoleMessages;
+            registry.byId('logContainer').set('title', 'Console (' + numberOfNewConsoleMessages + ')');
+        }
     }
 
     var getURL = window.URL || window.webkitURL || window;
@@ -104,6 +113,7 @@ require({
     var suggestButton = registry.byId('buttonSuggest');
     var docTimer;
     var docTabs = {};
+    var subtabs = {};
     var docError = false;
     var galleryError = false;
     var galleryTooltipTimer;
@@ -125,6 +135,7 @@ require({
     var searchTerm = '';
     var searchRegExp;
     var hintTimer;
+    var currentTab = '';
 
     var galleryErrorMsg = document.createElement('span');
     galleryErrorMsg.className = 'galleryError';
@@ -318,7 +329,9 @@ require({
                 }
             }
         }
-        if (!JSHINT(code, sandcastleJsHintOptions)) {
+        // make a copy of the options, JSHint modifies the object it's given
+        var options = JSON.parse(JSON.stringify(sandcastleJsHintOptions));
+        if (!JSHINT(code, options)) {
             var hints = JSHINT.errors;
             for (i = 0, len = hints.length; i < len; ++i) {
                 var hint = hints[i];
@@ -391,6 +404,29 @@ require({
     function hideGallery() {
         closeGalleryTooltip();
         tabs.selectChild(registry.byId('logContainer'));
+    }
+
+    tabs.watch("selectedChildWidget", function(name, oldValue, newValue){
+        if (newValue === registry.byId('logContainer')) {
+            numberOfNewConsoleMessages = 0;
+            registry.byId('logContainer').set('title', 'Console');
+        }
+    });
+
+    function registerScroll(demoContainer){
+        if (typeof document.onmousewheel !== 'undefined') {
+            demoContainer.addEventListener('mousewheel', function(e) {
+                if (typeof e.wheelDelta !== 'undefined' && e.wheelDelta) {
+                    demoContainer.scrollLeft -= e.wheelDelta * 70 / 120;
+                }
+            }, false);
+        } else {
+            demoContainer.addEventListener('DOMMouseScroll', function(e) {
+                if (typeof e.detail !== 'undefined' && e.detail) {
+                    demoContainer.scrollLeft += e.detail * 70 / 3;
+                }
+            }, false);
+        }
     }
 
     CodeMirror.commands.runCesium = function(cm) {
@@ -466,8 +502,8 @@ require({
 
         var onScriptTagError = function() {
             if (bucketFrame.contentDocument === bucketDoc) {
-                appendConsole('consoleError', 'Error loading ' + this.src);
-                appendConsole('consoleError', "Make sure Cesium is built, see the Contributor's Guide for details.");
+                appendConsole('consoleError', 'Error loading ' + this.src, true);
+                appendConsole('consoleError', "Make sure Cesium is built, see the Contributor's Guide for details.", true);
             }
         };
 
@@ -514,7 +550,7 @@ require({
             bucketWaiting = false;
             var bucketDoc = bucketFrame.contentDocument;
             if (local.headers.substring(0, local.emptyBucket.length) !== local.emptyBucket) {
-                appendConsole('consoleError', 'Error, first part of ' + local.bucketName + ' must match first part of bucket.html exactly.');
+                appendConsole('consoleError', 'Error, first part of ' + local.bucketName + ' must match first part of bucket.html exactly.', true);
             } else {
                 var bodyAttributes = local.headers.match(/<body([^>]*?)>/)[1];
                 var attributeRegex = /([-a-z_]+)\s*="([^"]*?)"/ig;
@@ -591,7 +627,7 @@ require({
         pos = body.indexOf('<script id="cesium_sandcastle_script">');
         var pos2 = body.lastIndexOf('</script>');
         if ((pos <= 0) || (pos2 <= pos)) {
-            appendConsole('consoleError', 'Error reading source file: ' + demo.name);
+            appendConsole('consoleError', 'Error reading source file: ' + demo.name, true);
         } else {
             var script = body.substring(pos + 38, pos2);
             while (script.length > 0 && script.charCodeAt(0) < 32) {
@@ -630,29 +666,34 @@ require({
             if (bucketDoc.body.getAttribute('data-sandcastle-loaded') !== 'yes') {
                 bucketDoc.body.setAttribute('data-sandcastle-loaded', 'yes');
                 logOutput.innerHTML = '';
+                numberOfNewConsoleMessages = 0;
+                registry.byId('logContainer').set('title', 'Console');
                 // This happens after a Run (F8) reloads bucket.html, to inject the editor code
                 // into the iframe, causing the demo to run there.
                 applyBucket();
                 if (docError) {
-                    appendConsole('consoleError', "Documentation not available.  Please run the 'generateDocumentation' build script to generate Cesium documentation.");
+                    appendConsole('consoleError', "Documentation not available.  Please run the 'generateDocumentation' build script to generate Cesium documentation.", true);
                     showGallery();
                 }
                 if (galleryError) {
-                    appendConsole('consoleError', 'Error loading gallery, please run the build script.');
+                    appendConsole('consoleError', 'Error loading gallery, please run the build script.', true);
                 }
             }
         } else if (typeof e.data.log !== 'undefined') {
             // Console log messages from the iframe display in Sandcastle.
-            appendConsole('consoleLog', e.data.log);
+            appendConsole('consoleLog', e.data.log, false);
         } else if (typeof e.data.error !== 'undefined') {
             // Console error messages from the iframe display in Sandcastle
-            appendConsole('consoleError', e.data.error);
+            appendConsole('consoleError', e.data.error, true);
             if (typeof e.data.lineNumber !== 'undefined') {
                 line = jsEditor.setMarker(e.data.lineNumber - 1, makeLineLabel(e.data.rawErrorMsg), 'errorMarker');
                 jsEditor.setLineClass(line, 'errorLine');
                 errorLines.push(line);
                 scrollToLine(e.data.lineNumber);
             }
+        } else if (typeof e.data.warn !== 'undefined') {
+            // Console warning messages from the iframe display in Sandcastle.
+            appendConsole('consoleWarn', e.data.warn, true);
         } else if (typeof e.data.highlight !== 'undefined') {
             // Hovering objects in the embedded Cesium window.
             highlightLine(e.data.highlight);
@@ -777,20 +818,10 @@ require({
         }
     });
 
-    var demosContainer = dom.byId('demosContainer');
-    if (typeof document.onmousewheel !== 'undefined') {
-        demosContainer.addEventListener('mousewheel', function(e) {
-            if (typeof e.wheelDelta !== 'undefined' && e.wheelDelta) {
-                demosContainer.scrollLeft -= e.wheelDelta * 70 / 120;
-            }
-        }, false);
-    } else {
-        demosContainer.addEventListener('DOMMouseScroll', function(e) {
-            if (typeof e.detail !== 'undefined' && e.detail) {
-                demosContainer.scrollLeft += e.detail * 70 / 3;
-            }
-        }, false);
-    }
+    var demoContainers = query('.demosContainer');
+    demoContainers.forEach(function(demoContainer){
+        registerScroll(demoContainer);
+    });
 
     var galleryContainer = registry.byId('innerPanel');
     galleryContainer.demoTileHeightRule = demoTileHeightRule;
@@ -811,6 +842,7 @@ require({
         queryObject = ioQuery.queryToObject(window.location.search.substring(1));
     } else {
         queryObject.src = 'Hello World.html';
+        queryObject.label = 'Showcases';
     }
 
     function loadDemoFromFile(index) {
@@ -819,8 +851,9 @@ require({
         xhr.get({
             url : 'gallery/' + window.encodeURIComponent(demo.name) + '.html',
             handleAs : 'text',
+            sync: true,
             error : function(error) {
-                appendConsole('consoleError', error);
+                appendConsole('consoleError', error, true);
                 galleryError = true;
             }
         }).then(function(value) {
@@ -871,9 +904,8 @@ require({
             if (typeof queryObject.src !== 'undefined') {
                 if (demo.name === window.decodeURIComponent(queryObject.src.replace('.html', ''))) {
                     loadFromGallery(demo);
-                    window.history.replaceState(demo, demo.name, '?src=' + demo.name + '.html');
+                    window.history.replaceState(demo, demo.name, '?src=' + demo.name + '.html&label=' + queryObject.label);
                     document.title = demo.name + ' - Cesium Sandcastle';
-                    queryObject.src = undefined;
                 }
             }
 
@@ -888,12 +920,21 @@ require({
         });
     }
 
+    function setSubtab(tabName) {
+        currentTab = (typeof queryObject.label !== 'undefined') ? queryObject.label : tabName;
+        queryObject.label = undefined;
+    }
+
     function addFileToGallery(index) {
         var searchDemos = dom.byId('searchDemos');
-        var demos = dom.byId('demos');
-        createGalleryButton(index, demos, '');
         createGalleryButton(index, searchDemos, 'searchDemo');
         loadDemoFromFile(index);
+    }
+
+    function onShowCallback() {
+        return function() {
+            setSubtab(this.title);
+        };
     }
 
     function addFileToTab(index) {
@@ -901,14 +942,18 @@ require({
         if (demo.label !== '') {
             var labels = demo.label.split(",");
             for (var j = 0; j < labels.length; j++) {
-                labels[j] = labels[j].trim();
-                if(!dom.byId(labels[j] + 'Demos')) {
-                    new ContentPane({
-                        content:'<div class="demosContainer"><div class="demos" id="' + labels[j] + 'Demos"></div></div>',
-                        title: labels[j]
-                        }).placeAt("innerPanel");
+                var label = labels[j];
+                label = label.trim();
+                if(!dom.byId(label + 'Demos')) {
+                    var cp = new ContentPane({
+                        content: '<div id="' + label + 'Container" class="demosContainer"><div class="demos" id="' + label + 'Demos"></div></div>',
+                        title: label,
+                        onShow : onShowCallback()
+                    }).placeAt("innerPanel");
+                    subtabs[label] = cp;
+                    registerScroll(dom.byId(label + 'Container'));
                 }
-                var tabName = labels[j] + 'Demos';
+                var tabName = label + 'Demos';
                 var tab = dom.byId(tabName);
                 createGalleryButton(index, tab, tabName);
             }
@@ -935,7 +980,7 @@ require({
                 loadFromGallery(demo);
                 var demoSrc = demo.name + '.html';
                 if (demoSrc !== window.location.search.substring(1)) {
-                    window.history.pushState(demo, demo.name, '?src=' + demoSrc);
+                    window.history.pushState(demo, demo.name, '?src=' + demoSrc + '&label=' + currentTab);
                 }
                 document.title = demo.name + ' - Cesium Sandcastle';
             }
@@ -960,6 +1005,17 @@ require({
         galleryErrorMsg.textContent = 'No demos found, please run the build script.';
         galleryErrorMsg.style.display = 'inline-block';
     } else {
+        var label = 'Showcases';
+        var cp = new ContentPane({
+            content : '<div id="showcasesContainer" class="demosContainer"><div class="demos" id="ShowcasesDemos"></div></div>',
+            title : 'Showcases',
+            onShow : function() {
+                setSubtab(this.title);
+            }
+        }).placeAt("innerPanel");
+        subtabs[label] = cp;
+        registerScroll(dom.byId('showcasesContainer'));
+
         var i;
         var len = gallery_demos.length;
 
@@ -979,6 +1035,22 @@ require({
             }
         }
 
+        label = 'All';
+        cp = new ContentPane({
+            content : '<div id="allContainer" class="demosContainer"><div class="demos" id="allDemos"></div></div>',
+            title : label,
+            onShow : function() {
+                setSubtab(this.title);
+            }
+        }).placeAt("innerPanel");
+        subtabs[label] = cp;
+        registerScroll(dom.byId('allContainer'));
+
+        var demos = dom.byId('allDemos');
+        for (i = 0; i < len; ++i) {
+            createGalleryButton(i, demos, 'all');
+        }
+
         if (!queryInGalleryIndex) {
             gallery_demos.push({
                 name : queryName,
@@ -989,5 +1061,7 @@ require({
     }
     dom.byId('searchDemos').appendChild(galleryErrorMsg);
     var searchContainer = registry.byId('searchContainer');
+
     hideSearchContainer();
+    registry.byId('innerPanel').selectChild(subtabs[currentTab]);
 });

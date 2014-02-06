@@ -19,16 +19,19 @@ define([
      *
      *  @example
      *  //Create a credit with a tooltip, image and link
-     *  var credit = new Credit('Cesium', '/images/cesium_logo.png', 'http://cesium.agi.com/');
+     *  var credit = new Cesium.Credit('Cesium', '/images/cesium_logo.png', 'http://cesiumjs.org/');
      */
 
     var Credit = function(text, imageUrl, link) {
         var hasLink = (defined(link));
         var hasImage = (defined(imageUrl));
         var hasText = (defined(text));
+
+        //>>includeStart('debug', pragmas.debug);
         if (!hasText && !hasImage && !hasLink) {
             throw new DeveloperError('text, imageUrl or link is required');
         }
+        //>>includeEnd('debug');
 
         if (!hasText && !hasImage) {
             text = link;
@@ -98,7 +101,7 @@ define([
      * @param {Credit} left The first credit
      * @param {Credit} left The second credit
      *
-     * @return {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
      */
     Credit.equals = function(left, right) {
         var leftUndefined = (!defined(left));
@@ -119,7 +122,7 @@ define([
      *
      * @param {Credit} credits The credit to compare to.
      *
-     * @return {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
      */
     Credit.prototype.equals = function(credit) {
         return Credit.equals(this, credit);
