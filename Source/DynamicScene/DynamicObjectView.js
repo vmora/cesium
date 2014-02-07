@@ -234,7 +234,6 @@ define([
         }
     }
 
-    var dynamicObjectViewDefaultOffset = new Cartesian3(10000, -10000, 10000);
     var dynamicObjectViewCartesian3Scratch = new Cartesian3();
 
     /**
@@ -288,6 +287,8 @@ define([
         this._last2dUp = new Cartesian2();
     };
 
+    DynamicObjectView.defaultView = new Cartesian3(10000, -10000, 10000);
+
     /**
     * Should be called each animation frame to update the camera
     * to the latest settings.
@@ -339,7 +340,7 @@ define([
 
             var viewFromProperty = this.dynamicObject.viewFrom;
             if (!defined(viewFromProperty) || !defined(viewFromProperty.getValue(time, offset))) {
-                Cartesian3.clone(dynamicObjectViewDefaultOffset, offset);
+                Cartesian3.clone(DynamicObjectView.defaultView, offset);
             }
 
             //Reset object-based cached values.
@@ -357,7 +358,7 @@ define([
         } else if (defined(this._lastOffset)) {
             offset = this._lastOffset;
         } else {
-            Cartesian3.clone(dynamicObjectViewDefaultOffset, offset);
+            Cartesian3.clone(DynamicObjectView.defaultView, offset);
         }
 
         var mode = scene.mode;

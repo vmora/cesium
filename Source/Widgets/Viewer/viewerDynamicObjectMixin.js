@@ -1,5 +1,6 @@
 /*global define*/
 define(['../../Core/BoundingSphere',
+        '../../Core/Cartesian3',
         '../../Core/defaultValue',
         '../../Core/defined',
         '../../Core/DeveloperError',
@@ -14,6 +15,7 @@ define(['../../Core/BoundingSphere',
         '../../ThirdParty/knockout'
     ], function(
         BoundingSphere,
+        Cartesian3,
         defaultValue,
         defined,
         DeveloperError,
@@ -77,7 +79,8 @@ define(['../../Core/BoundingSphere',
         var dynamicObjectView;
 
         function trackSelectedObject() {
-            viewer.trackedObject = viewer.selectedObject;
+            viewer.flyToObject(viewer.selectedObject);
+            //viewer.trackedObject = viewer.selectedObject;
         }
 
         function clearTrackedObject() {
@@ -159,7 +162,7 @@ define(['../../Core/BoundingSphere',
         function pickAndTrackObject(e) {
             var picked = viewer.scene.pick(e.position);
             if (defined(picked) && defined(picked.primitive) && defined(picked.primitive.dynamicObject)) {
-                viewer.trackedObject = picked.primitive.dynamicObject;
+                viewer.flyToObject(picked.primitive.dynamicObject);
             }
         }
 
@@ -289,21 +292,34 @@ define(['../../Core/BoundingSphere',
         });
 
         viewer.flyToObject = function(dynamicObject, options) {
-            if (typeof dynamicObject === 'undefined') {
+            if (!defined(dynamicObject)) {
                 throw new DeveloperError('dynamicObject is required.');
             }
+            viewer.trackedObject = undefined;
+
             options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
-            var duration = defaultValue(options.duration, 3);
+            var duration = defaultValue(options.duration, 3000);
 
             // Calculate time at the end of the animation
-            var destinationTime = viewer.clock.currentTime.addMinutes(duration);
-            // Position of object at the end of the animation
-            var destination = dynamicObject.position.getValueCartographic(destinationTime);
+            var destinationTime = viewer.clock.currentTime.addSeconds(duration / 1000);
 
-            viewer.scene.getAnimations().add(CameraFlightPath.createAnimationCartographic(viewer.scene.getFrameState(), {
-                destination : destination,
-                duration : duration
+            // Position of object at the end of the animation
+            var target = dynamicObject.position.getValue(destinationTime);
+            var up = viewer.centralBody.getEllipsoid().geodeticSurfaceNormal(target);
+            var eye = Cartesian3.add(target, DynamicObjectView.defaultView); //FIXME DynamicObjectView.defaultView is NED
+            var direction = Cartesian3.normalize(Cartesian3.subtract(target, eye));
+            var right = Cartesian3.normalize(Cartesian3.cross(direction, up));
+
+            viewer.scene.getAnimations().add(CameraFlightPath.createAnimation(viewer.scene, {
+                destination : eye,
+                direction : direction,
+                right : right,
+                up : up,
+                duration : duration,
+                onComplete : function() {
+                    viewer.trackedObject = dynamicObject;
+                }
             }));
         };
 
