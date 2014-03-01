@@ -7,6 +7,7 @@ define(['../../Core/BoundingSphere',
         '../../Core/EventHelper',
         '../../Core/JulianDate',
         '../../Core/ScreenSpaceEventType',
+        '../../Core/Transforms',
         '../../Core/wrapFunction',
         '../../DynamicScene/DynamicObject',
         '../../Scene/CameraFlightPath',
@@ -23,6 +24,7 @@ define(['../../Core/BoundingSphere',
         EventHelper,
         JulianDate,
         ScreenSpaceEventType,
+        Transforms,
         wrapFunction,
         DynamicObject,
         CameraFlightPath,
@@ -172,7 +174,7 @@ define(['../../Core/BoundingSphere',
 
         function trackObject(dynamicObject) {
             if (defined(dynamicObject) && defined(dynamicObject.position)) {
-                viewer.flyToObject(picked.primitive.dynamicObject);
+                viewer.flyToObject(dynamicObject);
             }
         }
 
@@ -314,19 +316,20 @@ define(['../../Core/BoundingSphere',
 
             options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
-            var duration = defaultValue(options.duration, 3000);
+            var duration = defaultValue(options.duration, 1500);
 
             // Calculate time at the end of the animation
             var destinationTime = viewer.clock.currentTime.addSeconds(duration / 1000);
 
             // Position of object at the end of the animation
             var target = dynamicObject.position.getValue(destinationTime);
-            var up = viewer.centralBody.getEllipsoid().geodeticSurfaceNormal(target);
-            var eye = Cartesian3.add(target, DynamicObjectView.defaultView); //FIXME DynamicObjectView.defaultView is NED
+            var up = Cartesian3.UNIT_Z;
+            var eye = Cartesian3.add(target, DynamicObjectView.defaultView);
             var direction = Cartesian3.normalize(Cartesian3.subtract(target, eye));
             var right = Cartesian3.normalize(Cartesian3.cross(direction, up));
+            viewer.scene.camera.controller.setTransform(Transforms.eastNorthUpToFixedFrame(target, viewer.centralBody.ellipsoid));
 
-            viewer.scene.getAnimations().add(CameraFlightPath.createAnimation(viewer.scene, {
+            viewer.scene.animations.add(CameraFlightPath.createAnimation(viewer.scene, {
                 destination : eye,
                 direction : direction,
                 right : right,
