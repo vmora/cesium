@@ -1,23 +1,21 @@
 /*global define*/
 define([
+        '../Core/Cartesian3',
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/DeveloperError',
-        '../Core/Math',
         '../Core/Ellipsoid',
-        '../Core/Cartesian3',
-        '../Core/Cartesian4',
+        '../Core/Math',
         '../Core/Matrix4',
         './CameraController',
         './PerspectiveFrustum'
     ], function(
+        Cartesian3,
         defined,
         defineProperties,
         DeveloperError,
-        CesiumMath,
         Ellipsoid,
-        Cartesian3,
-        Cartesian4,
+        CesiumMath,
         Matrix4,
         CameraController,
         PerspectiveFrustum) {
@@ -71,7 +69,7 @@ define([
         this._transform = Matrix4.clone(Matrix4.IDENTITY);
         this._invTransform = Matrix4.clone(Matrix4.IDENTITY);
 
-        var maxRadii = Ellipsoid.WGS84.getMaximumRadius();
+        var maxRadii = Ellipsoid.WGS84.maximumRadius;
         var position = Cartesian3.multiplyByScalar(Cartesian3.normalize(new Cartesian3(0.0, -2.0, 1.0)), 2.5 * maxRadii);
 
         /**
@@ -250,24 +248,22 @@ define([
     defineProperties(Camera.prototype, {
         /**
          * Gets the inverse camera transform.
+         * @memberof Camera.prototype
          *
-         * @memberof Camera
          * @type {Matrix4}
          * @default {@link Matrix4.IDENTITY}
-         *
-         * @see Camera#transform
          */
         inverseTransform : {
-            get : function () {
+            get : function() {
                 update(this);
                 return this._invTransform;
             }
         },
 
         /**
-         * The view matrix.
+         * Gets the view matrix.
+         * @memberof Camera.prototype
          *
-         * @memberof Camera
          * @type {Matrix4}
          *
          * @see UniformState#getView
@@ -275,16 +271,16 @@ define([
          * @see Camera#inverseViewMatrix
          */
         viewMatrix : {
-            get : function () {
+            get : function() {
                 update(this);
                 return this._viewMatrix;
             }
         },
 
         /**
-         * The inverse view matrix.
+         * Gets the inverse view matrix.
+         * @memberof Camera.prototype
          *
-         * @memberof Camera
          * @type {Matrix4}
          *
          * @see UniformState#getInverseView
@@ -292,16 +288,15 @@ define([
          * @see Camera#viewMatrix
          */
         inverseViewMatrix : {
-            get : function () {
+            get : function() {
                 update(this);
                 return this._invViewMatrix;
             }
         },
 
         /**
-         * The position of the camera in world coordinates.
-         *
-         * @memberof Camera
+         * Gets the position of the camera in world coordinates.
+         * @memberof Camera.prototype
          * @type {Cartesian3}
          */
         positionWC : {
@@ -312,9 +307,8 @@ define([
         },
 
         /**
-         * The view direction of the camera in world coordinates.
-         *
-         * @memberof Camera
+         * Gets the view direction of the camera in world coordinates.
+         * @memberof Camera.prototype
          * @type {Cartesian3}
          */
         directionWC : {
@@ -325,9 +319,8 @@ define([
         },
 
         /**
-         * The up direction of the camera in world coordinates.
-         *
-         * @memberof Camera
+         * Gets the up direction of the camera in world coordinates.
+         * @memberof Camera.prototype
          * @type {Cartesian3}
          */
         upWC : {
@@ -338,9 +331,8 @@ define([
         },
 
         /**
-         * The right direction of the camera in world coordinates.
-         *
-         * @memberof Camera
+         * Gets the right direction of the camera in world coordinates.
+         * @memberof Camera.prototype
          * @type {Cartesian3}
          */
         rightWC : {

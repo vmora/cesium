@@ -1,12 +1,11 @@
 /*global define*/
 define([
+        '../Core/Cartesian2',
+        '../Core/Cartesian3',
+        '../Core/Cartographic',
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
-        '../Core/Cartesian2',
-        '../Core/Cartesian3',
-        '../Core/Cartesian4',
-        '../Core/Cartographic',
         '../Core/DeveloperError',
         '../Core/Ellipsoid',
         '../Core/GeographicProjection',
@@ -20,13 +19,12 @@ define([
         './SceneMode',
         '../ThirdParty/Tween'
     ], function(
+        Cartesian2,
+        Cartesian3,
+        Cartographic,
         defaultValue,
         defined,
         defineProperties,
-        Cartesian2,
-        Cartesian3,
-        Cartesian4,
-        Cartographic,
         DeveloperError,
         Ellipsoid,
         GeographicProjection,
@@ -147,6 +145,33 @@ define([
         }
     };
 
+    var setTransformPosition = new Cartesian3();
+    var setTransformUp = new Cartesian3();
+    var setTransformDirection = new Cartesian3();
+
+    /**
+     * Sets the camera's transform without changing the current view.
+     *
+     * @memberof CameraController
+     *
+     * @param {Matrix4} The camera transform.
+     */
+    CameraController.prototype.setTransform = function(transform) {
+        var camera = this._camera;
+
+        var position = Cartesian3.clone(camera.positionWC, setTransformPosition);
+        var up = Cartesian3.clone(camera.upWC, setTransformUp);
+        var direction = Cartesian3.clone(camera.directionWC, setTransformDirection);
+
+        Matrix4.clone(transform, camera.transform);
+        var inverse = camera.inverseTransform;
+
+        Matrix4.multiplyByPoint(inverse, position, camera.position);
+        Matrix4.multiplyByPointAsVector(inverse, direction, camera.direction);
+        Matrix4.multiplyByPointAsVector(inverse, up, camera.up);
+        Cartesian3.cross(camera.direction, camera.up, camera.right);
+    };
+
     function clampMove2D(controller, position) {
         var maxX = controller._maxCoord.x * controller.maximumTranslateFactor;
         if (position.x > maxX) {
@@ -164,7 +189,6 @@ define([
             position.y = -maxY;
         }
     }
-
     var moveScratch = new Cartesian3();
     /**
      * Translates the camera's position by <code>amount</code> along <code>direction</code>.
@@ -407,53 +431,23 @@ define([
         this.look(this._camera.direction, -amount);
     };
 
-    var appendTransformPosition = new Cartesian3();
-    var appendTransformUp = new Cartesian3();
-    var appendTransformRight = new Cartesian3();
-    var appendTransformDirection = new Cartesian3();
     var appendTransformMatrix = new Matrix4();
+    var appendTransformNewMatrix = new Matrix4();
 
     function appendTransform(controller, transform) {
         var camera = controller._camera;
         var oldTransform;
         if (defined(transform)) {
-            var position = Cartesian3.clone(camera.positionWC, appendTransformPosition);
-            var up = Cartesian3.clone(camera.upWC, appendTransformUp);
-            var right = Cartesian3.clone(camera.rightWC, appendTransformRight);
-            var direction = Cartesian3.clone(camera.directionWC, appendTransformDirection);
-
-            oldTransform = camera.transform;
-            camera.transform = Matrix4.multiplyTransformation(transform, oldTransform, appendTransformMatrix);
-
-            var invTransform = camera.inverseTransform;
-            Matrix4.multiplyByPoint(invTransform, position, camera.position);
-            Matrix4.multiplyByPointAsVector(invTransform, up, camera.up);
-            Matrix4.multiplyByPointAsVector(invTransform, right, camera.right);
-            Matrix4.multiplyByPointAsVector(invTransform, direction, camera.direction);
+            oldTransform = Matrix4.clone(camera.transform, appendTransformMatrix);
+            Matrix4.multiplyTransformation(transform, oldTransform, appendTransformNewMatrix);
+            controller.setTransform(appendTransformNewMatrix);
         }
         return oldTransform;
     }
 
-    var revertTransformPosition = new Cartesian3();
-    var revertTransformUp = new Cartesian3();
-    var revertTransformRight = new Cartesian3();
-    var revertTransformDirection = new Cartesian3();
-
     function revertTransform(controller, transform) {
         if (defined(transform)) {
-            var camera = controller._camera;
-            var position = Cartesian3.clone(camera.positionWC, revertTransformPosition);
-            var up = Cartesian3.clone(camera.upWC, revertTransformUp);
-            var right = Cartesian3.clone(camera.rightWC, revertTransformRight);
-            var direction = Cartesian3.clone(camera.directionWC, revertTransformDirection);
-
-            camera.transform = transform;
-            transform = camera.inverseTransform;
-
-            Matrix4.multiplyByPoint(transform, position, camera.position);
-            Matrix4.multiplyByPointAsVector(transform, up, camera.up);
-            Matrix4.multiplyByPointAsVector(transform, right, camera.right);
-            Matrix4.multiplyByPointAsVector(transform, direction, camera.direction);
+            controller.setTransform(transform);
         }
     }
 
@@ -631,6 +625,11 @@ define([
             newLeft = -maxRight;
         }
 
+        if (newRight <= newLeft) {
+            newRight = 1.0;
+            newLeft = -1.0;
+        }
+
         var ratio = frustum.top / frustum.right;
         frustum.right = newRight;
         frustum.left = newLeft;
@@ -729,7 +728,7 @@ define([
 
     function setPositionCartographic3D(controller, cartographic) {
         var camera = controller._camera;
-        var ellipsoid = controller._projection.getEllipsoid();
+        var ellipsoid = controller._projection.ellipsoid;
 
         ellipsoid.cartographicToCartesian(cartographic, camera.position);
         Cartesian3.negate(camera.position, camera.direction);
@@ -773,7 +772,7 @@ define([
     function getHeading3D(controller) {
         var camera = controller._camera;
 
-        var ellipsoid = controller._projection.getEllipsoid();
+        var ellipsoid = controller._projection.ellipsoid;
         var toFixedFrame = Transforms.eastNorthUpToFixedFrame(camera.position, ellipsoid, scratchHeadingMatrix4);
         var transform = Matrix4.getRotation(toFixedFrame, scratchHeadingMatrix3);
         Matrix3.transpose(transform, transform);
@@ -819,9 +818,8 @@ define([
 
     defineProperties(CameraController.prototype, {
         /**
-         * The camera heading in radians.
-         * @memberof CameraController
-         *
+         * Gets or sets the camera heading in radians.
+         * @memberof CameraController.prototype
          * @type {Number}
          */
         heading : {
@@ -852,9 +850,8 @@ define([
         },
 
         /**
-         * The the camera tilt in radians
-         * @memberof CameraController
-         *
+         * Gets or sets the camera tilt in radians
+         * @memberof CameraController.prototype
          * @type {Number}
          */
         tilt : {
@@ -1123,7 +1120,7 @@ define([
         //>>includeEnd('debug');
 
         if (this._mode === SceneMode.SCENE3D) {
-            return extentCameraPosition3D(this._camera, extent, this._projection.getEllipsoid(), result, true);
+            return extentCameraPosition3D(this._camera, extent, this._projection.ellipsoid, result, true);
         } else if (this._mode === SceneMode.COLUMBUS_VIEW) {
             return extentCameraPositionColumbusView(this._camera, extent, this._projection, result, true);
         } else if (this._mode === SceneMode.SCENE2D) {
@@ -1181,7 +1178,7 @@ define([
             return undefined;
         }
 
-        return projection.getEllipsoid().cartographicToCartesian(cart, result);
+        return projection.ellipsoid.cartographicToCartesian(cart, result);
     }
 
     var pickEllipsoidCVRay = new Ray();
@@ -1197,7 +1194,7 @@ define([
             return undefined;
         }
 
-        return projection.getEllipsoid().cartographicToCartesian(cart, result);
+        return projection.ellipsoid.cartographicToCartesian(cart, result);
     }
 
     /**

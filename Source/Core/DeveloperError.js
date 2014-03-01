@@ -60,5 +60,12 @@ define(['./defined'], function(defined) {
         return str;
     };
 
+    /**
+     * @private
+     */
+    DeveloperError.throwInstantiationError = function() {
+        throw new DeveloperError('This function defines an interface and should not be called directly.');
+    };
+
     return DeveloperError;
 });

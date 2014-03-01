@@ -7,6 +7,7 @@ define([
         '../../Core/destroyObject',
         '../../Core/Event',
         '../../Core/EventHelper',
+        '../../Core/formatError',
         '../../Core/requestAnimationFrame',
         '../../DynamicScene/DataSourceCollection',
         '../../DynamicScene/DataSourceDisplay',
@@ -34,6 +35,7 @@ define([
         destroyObject,
         Event,
         EventHelper,
+        formatError,
         requestAnimationFrame,
         DataSourceCollection,
         DataSourceDisplay,
@@ -77,14 +79,16 @@ define([
                 } else {
                     viewer._renderLoopRunning = false;
                 }
-            } catch (e) {
+            } catch (error) {
                 viewer._useDefaultRenderLoop = false;
                 viewer._renderLoopRunning = false;
-                viewer._renderLoopError.raiseEvent(viewer, e);
+                viewer._renderLoopError.raiseEvent(viewer, error);
                 if (viewer._showRenderLoopErrors) {
                     /*global console*/
-                    viewer.cesiumWidget.showErrorPanel('An error occurred while rendering.  Rendering has stopped.', e);
-                    console.error(e);
+                    var title = 'An error occurred while rendering.  Rendering has stopped.';
+                    var message = formatError(error);
+                    viewer.cesiumWidget.showErrorPanel(title, message);
+                    console.error(title + ' ' + message);
                 }
             }
         }
@@ -264,14 +268,14 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
             geocoder = new Geocoder({
                 container : geocoderContainer,
                 scene : cesiumWidget.scene,
-                ellipsoid : cesiumWidget.centralBody.getEllipsoid()
+                ellipsoid : cesiumWidget.centralBody.ellipsoid
             });
         }
 
         //HomeButton
         var homeButton;
         if (!defined(options.homeButton) || options.homeButton !== false) {
-            homeButton = new HomeButton(toolbar, cesiumWidget.scene, cesiumWidget.sceneTransitioner, cesiumWidget.centralBody.getEllipsoid());
+            homeButton = new HomeButton(toolbar, cesiumWidget.scene, cesiumWidget.sceneTransitioner, cesiumWidget.centralBody.ellipsoid);
             if (defined(geocoder)) {
                 eventHelper.add(homeButton.viewModel.command.afterExecute, function() {
                     var viewModel = geocoder.viewModel;
@@ -293,7 +297,7 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
         var baseLayerPicker;
         if (createBaseLayerPicker) {
             var providerViewModels = defaultValue(options.imageryProviderViewModels, createDefaultBaseLayers());
-            baseLayerPicker = new BaseLayerPicker(toolbar, cesiumWidget.centralBody.getImageryLayers(), providerViewModels);
+            baseLayerPicker = new BaseLayerPicker(toolbar, cesiumWidget.centralBody.imageryLayers, providerViewModels);
             baseLayerPicker.viewModel.selectedItem = defaultValue(options.selectedImageryProviderViewModel, providerViewModels[0]);
 
             //Grab the dropdown for resize code.
@@ -373,7 +377,7 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
         }));
 
         var onDataSourceChanged = function(dataSource) {
-            if (this.clockTrackedDataSource === dataSource) {
+            if (that.clockTrackedDataSource === dataSource) {
                 trackDataSourceClock(dataSource);
             }
         };
@@ -393,7 +397,7 @@ Either specify options.imageryProvider instead or set options.baseLayerPicker to
             that._dataSourceChangedListeners[id]();
             that._dataSourceChangedListeners[id] = undefined;
             if (resetClock) {
-                var numDataSources = dataSourceCollection.getLength();
+                var numDataSources = dataSourceCollection.length;
                 if (automaticallyTrackDataSourceClocks && numDataSources > 0) {
                     that.clockTrackedDataSource = dataSourceCollection.get(numDataSources - 1);
                 } else {
