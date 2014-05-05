@@ -1,24 +1,6 @@
 /*global define*/
-define([
-        '../Core/PointGeometry',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
-    ], function(
-        PointGeometry,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+define(['../Core/PointGeometry'], function(PointGeometry) {
     "use strict";
 
-    function createPointGeometry(parameters, transferableObjects) {
-        var pointGeometry = parameters.geometry;
-        var geometry = PointGeometry.createGeometry(pointGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
-    }
-
-    return createTaskProcessorWorker(createPointGeometry);
+    return PointGeometry.createGeometry;
 });
