@@ -16,9 +16,9 @@ define([
         '../Core/Quaternion',
         '../Core/Ray',
         '../Core/Transforms',
+        '../ThirdParty/Tween',
         './PerspectiveFrustum',
-        './SceneMode',
-        '../ThirdParty/Tween'
+        './SceneMode'
     ], function(
         Cartesian2,
         Cartesian3,
@@ -36,9 +36,9 @@ define([
         Quaternion,
         Ray,
         Transforms,
+        Tween,
         PerspectiveFrustum,
-        SceneMode,
-        Tween) {
+        SceneMode) {
     "use strict";
 
     /**
@@ -66,8 +66,8 @@ define([
      * camera.frustum.near = 1.0;
      * camera.frustum.far = 2.0;
      *
-     * @demo <a href="http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Camera.html">Cesium Sandcastle Camera Demo</a>
-     * @demo <a href="http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Camera.html">Sandcastle Example</a> from the <a href="http://cesiumjs.org/2013/02/13/Cesium-Camera-Tutorial/">Camera Tutorial</a>
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Camera.html|Cesium Sandcastle Camera Demo}
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Camera.html">Sandcastle Example</a> from the <a href="http://cesiumjs.org/2013/02/13/Cesium-Camera-Tutorial/|Camera Tutorial}
      */
     var Camera = function(scene) {
         //>>includeStart('debug', pragmas.debug);
@@ -377,7 +377,6 @@ define([
          *
          * @type {Matrix4}
          *
-         * @see UniformState#view
          * @see czm_view
          * @see Camera#inverseViewMatrix
          */
@@ -394,7 +393,6 @@ define([
          *
          * @type {Matrix4}
          *
-         * @see UniformState#inverseView
          * @see czm_inverseView
          * @see Camera#viewMatrix
          */

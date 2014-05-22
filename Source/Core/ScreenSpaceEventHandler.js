@@ -5,16 +5,16 @@ define([
         './defined',
         './destroyObject',
         './DeveloperError',
-        './ScreenSpaceEventType',
-        './KeyboardEventModifier'
+        './KeyboardEventModifier',
+        './ScreenSpaceEventType'
     ], function(
         Cartesian2,
         defaultValue,
         defined,
         destroyObject,
         DeveloperError,
-        ScreenSpaceEventType,
-        KeyboardEventModifier) {
+        KeyboardEventModifier,
+        ScreenSpaceEventType) {
     "use strict";
 
     /**
@@ -23,7 +23,7 @@ define([
      *
      * @alias ScreenSpaceEventHandler
      *
-     * @param {DOC_TBA} element The element to add events to. Defaults to document.
+     * @param {Canvas} [element=document] The element to add events to.
      * @constructor
      */
     var ScreenSpaceEventHandler = function(element) {
