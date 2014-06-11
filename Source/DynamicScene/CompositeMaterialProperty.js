@@ -104,7 +104,7 @@ define([
 
         var innerProperty = this._composite._intervals.findDataForIntervalContainingDate(time);
         if (defined(innerProperty)) {
-            return innerProperty.getValue(time, result, context);
+            return innerProperty.getValue(time, result);
         }
         return undefined;
     };

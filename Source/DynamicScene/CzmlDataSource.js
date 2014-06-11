@@ -69,9 +69,7 @@ define([
         './StripeOrientation',
         './TimeIntervalCollectionPositionProperty',
         './TimeIntervalCollectionProperty',
-        './VideoMaterialProperty',
-        '../ThirdParty/Uri',
-        '../ThirdParty/when'
+        './VideoMaterialProperty'
     ], function(
         Cartesian2,
         Cartesian3,
@@ -142,9 +140,7 @@ define([
         StripeOrientation,
         TimeIntervalCollectionPositionProperty,
         TimeIntervalCollectionProperty,
-        VideoMaterialProperty,
-        Uri,
-        when) {
+        VideoMaterialProperty) {
     "use strict";
 
     var currentId;
@@ -396,7 +392,7 @@ define([
         case LabelStyle:
             return LabelStyle[defaultValue(czmlInterval.labelStyle, czmlInterval)];
         case HTMLVideoElement:
-            return unwrapVideoInterval(czmlInterval, sourceUri);
+            return unwrapUriInterval(czmlInterval, sourceUri);
         case Number:
             return defaultValue(czmlInterval.number, czmlInterval);
         case String:
