@@ -9,6 +9,13 @@
 var defineSuite;
 
 /**
+ * Defines a test suite that is skipped.
+ *
+ * @see defineSuite
+ */
+var xdefineSuite;
+
+/**
  * Registers a function that is called before running all tests.
  *
  * @param {Function} beforeAllFunction The function to run before all tests.
@@ -28,11 +35,11 @@ var afterAll;
 
     function getQueryParameter(name) {
         var match = new RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+        return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+    }
 
-        if (match) {
-            return decodeURIComponent(match[1].replace(/\+/g, ' '));
-        }
-        return null;
+    function defined(value) {
+        return value !== undefined;
     }
 
     // patch in beforeAll/afterAll functions
@@ -56,7 +63,7 @@ var afterAll;
 
     jasmine.Suite.prototype.beforeAll = function(beforeAllFunction) {
         beforeAllFunction.typeName = 'beforeAll';
-        if (typeof this.beforeAll_ === 'undefined') {
+        if (!defined(this.beforeAll_)) {
             this.beforeAll_ = [];
         }
         this.beforeAll_.unshift(beforeAllFunction);
@@ -64,7 +71,7 @@ var afterAll;
 
     jasmine.Suite.prototype.afterAll = function(afterAllFunction) {
         afterAllFunction.typeName = 'afterAll';
-        if (typeof this.afterAll_ === 'undefined') {
+        if (!defined(this.afterAll_)) {
             this.afterAll_ = [];
         }
         this.afterAll_.unshift(afterAllFunction);
@@ -102,7 +109,7 @@ var afterAll;
                 var results;
 
                 var beforeAll = this.beforeAll_;
-                if (typeof beforeAll !== 'undefined') {
+                if (defined(beforeAll)) {
                     var beforeSpec = new jasmine.Spec(this.env, this, 'beforeAll');
                     this.beforeSpec_ = beforeSpec;
                     results = function() {
@@ -116,7 +123,7 @@ var afterAll;
                 }
 
                 var afterAll = this.afterAll_;
-                if (typeof afterAll !== 'undefined') {
+                if (defined(afterAll)) {
                     var afterSpec = new jasmine.Spec(this.env, this, 'afterAll');
                     this.afterSpec_ = afterSpec;
                     results = function() {
@@ -169,16 +176,74 @@ var afterAll;
     var readyToCreateTests = false;
     var createTests;
 
+    var built = getQueryParameter('built');
+    var release = getQueryParameter('release');
+    var loadTests = true;
+
     require.config({
-        baseUrl : getQueryParameter('baseUrl') || '../Source',
-        paths : {
-            'Specs' : '../Specs'
-        },
         waitSeconds : 30
     });
 
-    //start loading all of Cesium early, so it's all available for code coverage calculations.
-    require(['Cesium']);
+    // set up require for AMD, combined or minified and
+    // start loading all of Cesium early, so it's all available for code coverage calculations.
+    if (built) {
+        require.config({
+            baseUrl : getQueryParameter('baseUrl') || '../Build/Cesium',
+            paths : {
+                'Stubs' : '../Stubs'
+            },
+            shim : {
+                'Cesium' : {
+                    exports : 'Cesium'
+                }
+            }
+        });
+
+        require(['Cesium', 'Stubs/paths'], function(BuiltCesium, paths) {
+            paths.Specs = '../../Specs';
+
+            require.config({
+                paths : paths
+            });
+
+            requireTests();
+        });
+
+        loadTests = false;
+    } else {
+        require.config({
+            baseUrl : getQueryParameter('baseUrl') || '../Source',
+            paths : {
+                'Specs' : '../Specs'
+            }
+        });
+
+        require(['Cesium']);
+    }
+
+    function allTestsReady() {
+        return tests.every(function(test) {
+            return !!test.f;
+        });
+    }
+
+    function createTestsIfReady() {
+        if (readyToCreateTests && allTestsReady()) {
+            tests.sort(function(a, b) {
+                return a.name.toUpperCase().localeCompare(b.name.toUpperCase());
+            });
+
+            tests.forEach(function(test, i) {
+                //calling the function registers the test with Jasmine
+                var suite = test.f();
+
+                //keep track of the index of the test in the suite so the sort later is stable.
+                suite.index = i;
+            });
+
+            createTests();
+        }
+    }
 
     defineSuite = function(deps, name, suite, categories) {
         if (typeof suite === 'object' || typeof suite === 'string') {
@@ -209,63 +274,31 @@ var afterAll;
         });
     };
 
-    function createTestsIfReady() {
-        if (readyToCreateTests && allTestsReady()) {
-            tests.sort(function(a, b) {
-                return a.name.toUpperCase().localeCompare(b.name.toUpperCase());
-            });
+    xdefineSuite = function(deps, name, suite, categories) {
+    };
 
-            tests.forEach(function(test, i) {
-                //calling the function registers the test with Jasmine
-                var suite = test.f();
+    function requireTests() {
+        //specs is an array defined by SpecList.js
+        var modules = ['Specs/addDefaultMatchers', 'Specs/equalsMethodEqualityTester'].concat(specs);
+        require(modules, function(addDefaultMatchers, equalsMethodEqualityTester) {
+            var env = jasmine.getEnv();
 
-                //keep track of the index of the test in the suite so the sort later is stable.
-                suite.index = i;
-            });
+            env.beforeEach(addDefaultMatchers(!release));
+            env.addEqualityTester(equalsMethodEqualityTester);
 
-            createTests();
-        }
-    }
+            createTests = function() {
+                var reporter = new jasmine.HtmlReporter();
+                env.addReporter(reporter);
+                env.specFilter = reporter.specFilter;
+                env.execute();
+            };
 
-    function allTestsReady() {
-        return tests.every(function(test) {
-            return !!test.f;
+            readyToCreateTests = true;
+            createTestsIfReady();
         });
     }
 
-    //specs is an array defined by SpecList.js
-    require([
-             'Specs/addDefaultMatchers',
-             'Specs/equalsMethodEqualityTester'
-         ].concat(specs), function(
-             addDefaultMatchers,
-             equalsMethodEqualityTester) {
-        var env = jasmine.getEnv();
-
-        env.beforeEach(addDefaultMatchers);
-        env.addEqualityTester(equalsMethodEqualityTester);
-
-        createTests = function() {
-            var reporter = new jasmine.HtmlReporter();
-            var isSuiteFocused = jasmine.HtmlReporterHelpers.isSuiteFocused;
-            var suites = jasmine.getEnv().currentRunner().suites();
-
-            for ( var i = 1, insertPoint = 0, len = suites.length; i < len; i++) {
-                var suite = suites[i];
-                if (isSuiteFocused(suite)) {
-                    suites.splice(i, 1);
-                    suites.splice(insertPoint, 0, suite);
-                    insertPoint++;
-                    i--;
-                }
-            }
-
-            env.addReporter(reporter);
-            env.specFilter = reporter.specFilter;
-            env.execute();
-        };
-
-        readyToCreateTests = true;
-        createTestsIfReady();
-    });
+    if (loadTests) {
+        requireTests();
+    }
 }());

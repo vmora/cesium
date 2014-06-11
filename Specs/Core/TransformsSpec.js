@@ -1,42 +1,42 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/Transforms',
-         'Core/DeveloperError',
-         'Core/Cartesian2',
-         'Core/Cartesian3',
-         'Core/Cartesian4',
-         'Core/defined',
-         'Core/Ellipsoid',
-         'Core/Iau2006XysData',
-         'Core/JulianDate',
-         'Core/Matrix3',
-         'Core/Matrix4',
-         'Core/Math',
-         'Core/Quaternion',
-         'Core/TimeConstants',
-         'Core/TimeInterval',
-         'Core/EarthOrientationParameters',
-         'ThirdParty/when',
-         'Core/loadJson'
-     ], function(
-         Transforms,
-         DeveloperError,
-         Cartesian2,
-         Cartesian3,
-         Cartesian4,
-         defined,
-         Ellipsoid,
-         Iau2006XysData,
-         JulianDate,
-         Matrix3,
-         Matrix4,
-         CesiumMath,
-         Quaternion,
-         TimeConstants,
-         TimeInterval,
-         EarthOrientationParameters,
-         when,
-         loadJson) {
+        'Core/Transforms',
+        'Core/Cartesian2',
+        'Core/Cartesian3',
+        'Core/Cartesian4',
+        'Core/defined',
+        'Core/DeveloperError',
+        'Core/EarthOrientationParameters',
+        'Core/Ellipsoid',
+        'Core/Iau2006XysData',
+        'Core/JulianDate',
+        'Core/loadJson',
+        'Core/Math',
+        'Core/Matrix3',
+        'Core/Matrix4',
+        'Core/Quaternion',
+        'Core/TimeConstants',
+        'Core/TimeInterval',
+        'ThirdParty/when'
+    ], function(
+        Transforms,
+        Cartesian2,
+        Cartesian3,
+        Cartesian4,
+        defined,
+        DeveloperError,
+        EarthOrientationParameters,
+        Ellipsoid,
+        Iau2006XysData,
+        JulianDate,
+        loadJson,
+        CesiumMath,
+        Matrix3,
+        Matrix4,
+        Quaternion,
+        TimeConstants,
+        TimeInterval,
+        when) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -232,11 +232,11 @@ defineSuite([
         it('throws if the date parameter is not specified', function() {
             expect(function() {
                 Transforms.computeIcrfToFixedMatrix(undefined);
-            }).toThrow();
+            }).toThrowDeveloperError();
 
             expect(function() {
                 Transforms.computeFixedToIcrfMatrix(undefined);
-            }).toThrow();
+            }).toThrowDeveloperError();
         });
 
         it('works with data from STK Components', function() {
@@ -285,8 +285,8 @@ defineSuite([
                     for ( var k = 0; k < 9; k++) {
                         testDiff[k] = t[k] - expectedMtx[k];
                     }
-                    expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON15);
-                    expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON15);
+                    expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON14);
+                    expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON14);
                 }
             });
         });
@@ -328,8 +328,8 @@ defineSuite([
                 for ( var i = 0; i < 9; i++) {
                     testDiff[i] = t[i] - expectedMtx[i];
                 }
-                expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON15);
-                expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON15);
+                expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON14);
+                expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON14);
             });
         });
 
@@ -353,8 +353,8 @@ defineSuite([
                 for ( var i = 0; i < 9; i++) {
                     testDiff[i] = t[i] - expectedMtx[i];
                 }
-                expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON15);
-                expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON15);
+                expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON14);
+                expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON14);
             });
         });
 
@@ -377,8 +377,8 @@ defineSuite([
                 for ( var i = 0; i < 9; i++) {
                     testDiff[i] = t[i] - expectedMtx[i];
                 }
-                expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON15);
-                expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON15);
+                expect(testInverse).toEqualEpsilon(Matrix3.IDENTITY, CesiumMath.EPSILON14);
+                expect(testDiff).toEqualEpsilon(new Matrix3(), CesiumMath.EPSILON14);
             });
         });
 
@@ -469,7 +469,7 @@ defineSuite([
             runs(function() {
                 expect(function() {
                     return Transforms.computeIcrfToFixedMatrix(time);
-                }).toThrow();
+                }).toThrowRuntimeError();
             });
         });
 
@@ -484,7 +484,7 @@ defineSuite([
             runs(function() {
                 expect(function() {
                     return Transforms.computeIcrfToFixedMatrix(time);
-                }).toThrow();
+                }).toThrowRuntimeError();
             });
         });
 
@@ -571,36 +571,36 @@ defineSuite([
     it('eastNorthUpToFixedFrame throws without an origin', function() {
         expect(function() {
             Transforms.eastNorthUpToFixedFrame(undefined, Ellipsoid.WGS84);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('northEastDownToFixedFrame throws without an origin', function() {
         expect(function() {
             Transforms.northEastDownToFixedFrame(undefined, Ellipsoid.WGS84);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('computeTemeToPseudoFixedMatrix throws without a date', function() {
         expect(function() {
             Transforms.computeTemeToPseudoFixedMatrix(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('pointToWindowCoordinates throws without modelViewProjectionMatrix', function() {
         expect(function() {
             Transforms.pointToWindowCoordinates(undefined, Matrix4.IDENTITY, Cartesian3.ZERO);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('pointToWindowCoordinates throws without viewportTransformation', function() {
         expect(function() {
             Transforms.pointToWindowCoordinates(Matrix4.IDENTITY, undefined, Cartesian3.ZERO);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('pointToWindowCoordinates throws without a point', function() {
         expect(function() {
             Transforms.pointToWindowCoordinates(Matrix4.IDENTITY, Matrix4.IDENTITY, undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 });

@@ -1,55 +1,55 @@
 /*global define*/
 define([
-        '../Core/defaultValue',
-        '../Core/defined',
-        '../Core/DeveloperError',
+        '../Core/BoundingSphere',
+        '../Core/Cartesian3',
         '../Core/Color',
         '../Core/combine',
-        '../Core/destroyObject',
-        '../Core/FAR',
-        '../Core/Cartesian3',
-        '../Core/Matrix4',
         '../Core/ComponentDatatype',
+        '../Core/defaultValue',
+        '../Core/defined',
+        '../Core/destroyObject',
+        '../Core/DeveloperError',
+        '../Core/FAR',
+        '../Core/Matrix4',
         '../Core/PrimitiveType',
-        '../Core/BoundingSphere',
         '../Renderer/BufferUsage',
-        '../Renderer/BlendingState',
-        '../Renderer/CommandLists',
-        '../Renderer/DrawCommand',
         '../Renderer/createShaderSource',
-        '../Renderer/CullFace',
-        './Material',
-        '../Shaders/SensorVolume',
-        '../Shaders/CustomSensorVolumeVS',
+        '../Renderer/DrawCommand',
         '../Shaders/CustomSensorVolumeFS',
+        '../Shaders/CustomSensorVolumeVS',
+        '../Shaders/SensorVolume',
+        './BlendingState',
+        './CullFace',
+        './Material',
+        './Pass',
         './SceneMode'
     ], function(
-        defaultValue,
-        defined,
-        DeveloperError,
+        BoundingSphere,
+        Cartesian3,
         Color,
         combine,
-        destroyObject,
-        FAR,
-        Cartesian3,
-        Matrix4,
         ComponentDatatype,
+        defaultValue,
+        defined,
+        destroyObject,
+        DeveloperError,
+        FAR,
+        Matrix4,
         PrimitiveType,
-        BoundingSphere,
         BufferUsage,
-        BlendingState,
-        CommandLists,
-        DrawCommand,
         createShaderSource,
+        DrawCommand,
+        CustomSensorVolumeFS,
+        CustomSensorVolumeVS,
+        ShadersSensorVolume,
+        BlendingState,
         CullFace,
         Material,
-        ShadersSensorVolume,
-        CustomSensorVolumeVS,
-        CustomSensorVolumeFS,
+        Pass,
         SceneMode) {
     "use strict";
 
-    var attributeIndices = {
+    var attributeLocations = {
         position : 0,
         normal : 1
     };
@@ -66,15 +66,17 @@ define([
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         this._pickId = undefined;
-        this._pickIdThis = defaultValue(options._pickIdThis, this);
+        this._pickPrimitive = defaultValue(options._pickPrimitive, this);
 
         this._frontFaceColorCommand = new DrawCommand();
         this._backFaceColorCommand = new DrawCommand();
         this._pickCommand = new DrawCommand();
-        this._commandLists = new CommandLists();
+
+        this._boundingSphere = new BoundingSphere();
+        this._boundingSphereWC = new BoundingSphere();
 
         this._frontFaceColorCommand.primitiveType = PrimitiveType.TRIANGLES;
-        this._frontFaceColorCommand.boundingVolume = new BoundingSphere();
+        this._frontFaceColorCommand.boundingVolume = this._boundingSphereWC;
         this._frontFaceColorCommand.owner = this;
 
         this._backFaceColorCommand.primitiveType = this._frontFaceColorCommand.primitiveType;
@@ -94,7 +96,7 @@ define([
         this.show = defaultValue(options.show, true);
 
         /**
-         * When <code>true</code>, a polyline is shown where the sensor outline intersections the central body.
+         * When <code>true</code>, a polyline is shown where the sensor outline intersections the globe.
          *
          * @type {Boolean}
          *
@@ -121,8 +123,6 @@ define([
          * coordinates, the sensor's principal direction is along the positive z-axis.  The clock angle, sometimes
          * called azimuth, is the angle in the sensor's X-Y plane measured from the positive X-axis toward the positive
          * Y-axis.  The cone angle, sometimes called elevation, is the angle out of the X-Y plane along the positive Z-axis.
-         * This matrix is available to GLSL vertex and fragment shaders via
-         * {@link czm_model} and derived uniforms.
          * <br /><br />
          * <div align='center'>
          * <img src='images/CustomSensorVolume.setModelMatrix.png' /><br />
@@ -132,24 +132,14 @@ define([
          * @type {Matrix4}
          * @default {@link Matrix4.IDENTITY}
          *
-         * @see czm_model
-         *
          * @example
          * // The sensor's vertex is located on the surface at -75.59777 degrees longitude and 40.03883 degrees latitude.
          * // The sensor's opens upward, along the surface normal.
-         * var center = ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-75.59777, 40.03883));
-         * sensor.modelMatrix = Transforms.eastNorthUpToFixedFrame(center);
+         * var center = Cesium.Cartesian3.fromDegrees(-75.59777, 40.03883);
+         * sensor.modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
          */
         this.modelMatrix = Matrix4.clone(defaultValue(options.modelMatrix, Matrix4.IDENTITY));
-
-        /**
-         * DOC_TBA
-         *
-         * @type {BufferUsage}
-         * @default {@link BufferUsage.STATIC_DRAW}
-         */
-        this.bufferUsage = defaultValue(options.bufferUsage, BufferUsage.STATIC_DRAW);
-        this._bufferUsage = this.bufferUsage;
+        this._modelMatrix = new Matrix4();
 
         /**
          * DOC_TBA
@@ -165,7 +155,7 @@ define([
 
         /**
          * The surface appearance of the sensor.  This can be one of several built-in {@link Material} objects or a custom material, scripted with
-         * <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>.
+         * {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}.
          * <p>
          * The default material is <code>Material.ColorType</code>.
          * </p>
@@ -173,21 +163,21 @@ define([
          * @type {Material}
          * @default Material.fromType(Material.ColorType)
          *
+         * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
+         *
          * @example
          * // 1. Change the color of the default material to yellow
-         * sensor.material.uniforms.color = new Color(1.0, 1.0, 0.0, 1.0);
+         * sensor.material.uniforms.color = new Cesium.Color(1.0, 1.0, 0.0, 1.0);
          *
          * // 2. Change material to horizontal stripes
-         * sensor.material = Material.fromType(Material.StripeType);
-         *
-         * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+         * sensor.material = Cesium.Material.fromType(Material.StripeType);
          */
         this.material = defined(options.material) ? options.material : Material.fromType(Material.ColorType);
         this._material = undefined;
         this._translucent = undefined;
 
         /**
-         * The color of the polyline where the sensor outline intersects the central body.  The default is {@link Color.WHITE}.
+         * The color of the polyline where the sensor outline intersects the globe.  The default is {@link Color.WHITE}.
          *
          * @type {Color}
          * @default {@link Color.WHITE}
@@ -197,7 +187,7 @@ define([
         this.intersectionColor = Color.clone(defaultValue(options.intersectionColor, Color.WHITE));
 
         /**
-         * The approximate pixel width of the polyline where the sensor outline intersects the central body.  The default is 5.0.
+         * The approximate pixel width of the polyline where the sensor outline intersects the globe.  The default is 5.0.
          *
          * @type {Number}
          * @default 5.0
@@ -246,8 +236,6 @@ define([
     /**
      * DOC_TBA
      *
-     * @memberof CustomSensorVolume
-     *
      * @see CustomSensorVolume#getDirections
      */
     CustomSensorVolume.prototype.setDirections = function(directions) {
@@ -257,8 +245,6 @@ define([
 
     /**
      * DOC_TBA
-     *
-     * @memberof CustomSensorVolume
      *
      * @see CustomSensorVolume#setDirections
      */
@@ -292,7 +278,7 @@ define([
             boundingVolumePositions.push(p);
         }
 
-        BoundingSphere.fromPoints(boundingVolumePositions, customSensorVolume._frontFaceColorCommand.boundingVolume);
+        BoundingSphere.fromPoints(boundingVolumePositions, customSensorVolume._boundingSphere);
 
         return positions;
     }
@@ -331,18 +317,18 @@ define([
             vertices[k++] = n.z;
         }
 
-        var vertexBuffer = context.createVertexBuffer(new Float32Array(vertices), customSensorVolume.bufferUsage);
+        var vertexBuffer = context.createVertexBuffer(new Float32Array(vertices), BufferUsage.STATIC_DRAW);
         var stride = 2 * 3 * Float32Array.BYTES_PER_ELEMENT;
 
         var attributes = [{
-            index : attributeIndices.position,
+            index : attributeLocations.position,
             vertexBuffer : vertexBuffer,
             componentsPerAttribute : 3,
             componentDatatype : ComponentDatatype.FLOAT,
             offsetInBytes : 0,
             strideInBytes : stride
         }, {
-            index : attributeIndices.normal,
+            index : attributeLocations.normal,
             vertexBuffer : vertexBuffer,
             componentsPerAttribute : 3,
             componentDatatype : ComponentDatatype.FLOAT,
@@ -354,9 +340,12 @@ define([
     }
 
     /**
-     * DOC_TBA
-     *
-     * @memberof CustomSensorVolume
+     * Called when {@link Viewer} or {@link CesiumWidget} render the scene to
+     * get the draw commands needed to render this primitive.
+     * <p>
+     * Do not call this function directly.  This is documented just to
+     * list the exceptions that may be propagated when the scene is rendered:
+     * </p>
      *
      * @exception {DeveloperError} this.radius must be greater than or equal to zero.
      * @exception {DeveloperError} this.material must be defined.
@@ -367,13 +356,14 @@ define([
             return;
         }
 
+        //>>includeStart('debug', pragmas.debug);
         if (this.radius < 0.0) {
             throw new DeveloperError('this.radius must be greater than or equal to zero.');
         }
-
         if (!defined(this.material)) {
             throw new DeveloperError('this.material must be defined.');
         }
+        //>>includeEnd('debug');
 
         var translucent = this.material.isTranslucent();
 
@@ -404,6 +394,7 @@ define([
                 });
 
                 this._frontFaceColorCommand.renderState = rs;
+                this._frontFaceColorCommand.pass = Pass.TRANSLUCENT;
 
                 rs = context.createRenderState({
                     depthTest : {
@@ -418,6 +409,7 @@ define([
                 });
 
                 this._backFaceColorCommand.renderState = rs;
+                this._backFaceColorCommand.pass = Pass.TRANSLUCENT;
 
                 rs = context.createRenderState({
                     depthTest : {
@@ -435,6 +427,7 @@ define([
                     depthMask : true
                 });
                 this._frontFaceColorCommand.renderState = rs;
+                this._frontFaceColorCommand.pass = Pass.OPAQUE;
 
                 rs = context.createRenderState({
                     depthTest : {
@@ -447,9 +440,9 @@ define([
         }
 
         // Recreate vertex buffer when directions change
-        if ((this._directionsDirty) || (this._bufferUsage !== this.bufferUsage)) {
+        var directionsChanged = this._directionsDirty;
+        if (directionsChanged) {
             this._directionsDirty = false;
-            this._bufferUsage = this.bufferUsage;
             this._va = this._va && this._va.destroy();
 
             var directions = this._directions;
@@ -465,7 +458,15 @@ define([
         }
 
         var pass = frameState.passes;
-        this._commandLists.removeAll();
+
+        var modelMatrixChanged = !Matrix4.equals(this.modelMatrix, this._modelMatrix);
+        if (modelMatrixChanged) {
+            Matrix4.clone(this.modelMatrix, this._modelMatrix);
+        }
+
+        if (directionsChanged || modelMatrixChanged) {
+            BoundingSphere.transform(this._boundingSphere, this.modelMatrix, this._boundingSphereWC);
+        }
 
         this._frontFaceColorCommand.modelMatrix = this.modelMatrix;
         this._backFaceColorCommand.modelMatrix = this._frontFaceColorCommand.modelMatrix;
@@ -475,30 +476,31 @@ define([
         this._material = this.material;
         this._material.update(context);
 
-        if (pass.color) {
+        if (pass.render) {
             var frontFaceColorCommand = this._frontFaceColorCommand;
             var backFaceColorCommand = this._backFaceColorCommand;
 
             // Recompile shader when material changes
             if (materialChanged || !defined(frontFaceColorCommand.shaderProgram)) {
-                var fsSource = createShaderSource({ sources : [ShadersSensorVolume, this._material.shaderSource, CustomSensorVolumeFS] });
+                var fsSource = createShaderSource({
+                    sources : [ShadersSensorVolume, this._material.shaderSource, CustomSensorVolumeFS]
+                });
 
-                frontFaceColorCommand.shaderProgram = context.getShaderCache().replaceShaderProgram(
-                        frontFaceColorCommand.shaderProgram, CustomSensorVolumeVS, fsSource, attributeIndices);
-                frontFaceColorCommand.uniformMap = combine([this._uniforms, this._material._uniforms], false, false);
+                frontFaceColorCommand.shaderProgram = context.replaceShaderProgram(
+                        frontFaceColorCommand.shaderProgram, CustomSensorVolumeVS, fsSource, attributeLocations);
+                frontFaceColorCommand.uniformMap = combine(this._uniforms, this._material._uniforms);
 
                 backFaceColorCommand.shaderProgram = frontFaceColorCommand.shaderProgram;
-                backFaceColorCommand.uniformMap = combine([this._uniforms, this._material._uniforms], false, false);
+                backFaceColorCommand.uniformMap = combine(this._uniforms, this._material._uniforms);
                 backFaceColorCommand.uniformMap.u_normalDirection = function() {
                     return -1.0;
                 };
             }
 
             if (translucent) {
-                this._commandLists.translucentList.push(this._backFaceColorCommand);
-                this._commandLists.translucentList.push(this._frontFaceColorCommand);
+                commandList.push(this._backFaceColorCommand, this._frontFaceColorCommand);
             } else {
-                this._commandLists.opaqueList.push(this._frontFaceColorCommand);
+                commandList.push(this._frontFaceColorCommand);
             }
         }
 
@@ -509,7 +511,7 @@ define([
                 this._id = this.id;
                 this._pickId = this._pickId && this._pickId.destroy();
                 this._pickId = context.createPickId({
-                    primitive : this._pickIdThis,
+                    primitive : this._pickPrimitive,
                     id : this.id
                 });
             }
@@ -521,32 +523,25 @@ define([
                     pickColorQualifier : 'uniform'
                 });
 
-                pickCommand.shaderProgram = context.getShaderCache().replaceShaderProgram(
-                    pickCommand.shaderProgram, CustomSensorVolumeVS, pickFS, attributeIndices);
+                pickCommand.shaderProgram = context.replaceShaderProgram(
+                    pickCommand.shaderProgram, CustomSensorVolumeVS, pickFS, attributeLocations);
 
                 var that = this;
-                pickCommand.uniformMap = combine([this._uniforms, this._material._uniforms, {
+                var uniforms = {
                     czm_pickColor : function() {
                         return that._pickId.color;
                     }
-                }], false, false);
+                };
+                pickCommand.uniformMap = combine(combine(this._uniforms, this._material._uniforms), uniforms);
             }
 
-            if (translucent) {
-                this._commandLists.pickList.translucentList.push(pickCommand);
-            } else {
-                this._commandLists.pickList.opaqueList.push(pickCommand);
-            }
-        }
-
-        if (!this._commandLists.empty()) {
-            commandList.push(this._commandLists);
+            pickCommand.pass = translucent ? Pass.TRANSLUCENT : Pass.OPAQUE;
+            commandList.push(pickCommand);
         }
     };
 
     /**
      * DOC_TBA
-     * @memberof CustomSensorVolume
      */
     CustomSensorVolume.prototype.isDestroyed = function() {
         return false;
@@ -554,12 +549,11 @@ define([
 
     /**
      * DOC_TBA
-     * @memberof CustomSensorVolume
      */
     CustomSensorVolume.prototype.destroy = function() {
         this._frontFaceColorCommand.vertexArray = this._frontFaceColorCommand.vertexArray && this._frontFaceColorCommand.vertexArray.destroy();
-        this._frontFaceColorCommand.shaderProgram = this._frontFaceColorCommand.shaderProgram && this._frontFaceColorCommand.shaderProgram.release();
-        this._pickCommand.shaderProgram = this._pickCommand.shaderProgram && this._pickCommand.shaderProgram.release();
+        this._frontFaceColorCommand.shaderProgram = this._frontFaceColorCommand.shaderProgram && this._frontFaceColorCommand.shaderProgram.destroy();
+        this._pickCommand.shaderProgram = this._pickCommand.shaderProgram && this._pickCommand.shaderProgram.destroy();
         this._pickId = this._pickId && this._pickId.destroy();
         return destroyObject(this);
     };

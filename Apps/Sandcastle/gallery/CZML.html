@@ -16,7 +16,7 @@
     });
     </script>
 </head>
-<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html" data-sandcastle-title="Cesium">
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html" data-sandcastle-title="Cesium + require.js">
 <style>
     @import url(../templates/bucket.css);
 </style>
@@ -29,9 +29,10 @@ require(['Cesium'], function(Cesium) {
 
     var gallery = '../../CesiumViewer/Gallery/';
 
-    function czmlSatellites() {
-        Sandcastle.declare(czmlSatellites); // For highlighting in Sandcastle.
+    var viewer = new Cesium.Viewer('cesiumContainer');
+    viewer.extend(Cesium.viewerDynamicObjectMixin);
 
+    function czmlSatellites() {
         viewer.dataSources.removeAll();
 
         var czmlDataSource = new Cesium.CzmlDataSource();
@@ -40,10 +41,13 @@ require(['Cesium'], function(Cesium) {
             viewer.homeButton.viewModel.command();
         });
     }
+    czmlSatellites();
 
-    function czmlSensors() {
-        Sandcastle.declare(czmlSensors); // For highlighting in Sandcastle.
+    Sandcastle.addToolbarButton('Satellites', function() {
+        czmlSatellites();
+    });
 
+    Sandcastle.addToolbarButton('Sensors', function() {
         viewer.dataSources.removeAll();
 
         var czmlDataSource = new Cesium.CzmlDataSource();
@@ -51,11 +55,9 @@ require(['Cesium'], function(Cesium) {
             viewer.dataSources.add(czmlDataSource);
             viewer.homeButton.viewModel.command();
         });
-    }
+    });
 
-    function czmlVehicle() {
-        Sandcastle.declare(czmlVehicle); // For highlighting in Sandcastle.
-
+    Sandcastle.addToolbarButton('Vehicle', function() {
         viewer.dataSources.removeAll();
 
         var czmlDataSource = new Cesium.CzmlDataSource();
@@ -63,7 +65,7 @@ require(['Cesium'], function(Cesium) {
             viewer.dataSources.add(czmlDataSource);
             viewer.homeButton.viewModel.command();
         });
-    }
+    });
 
     var builtInCzml = [{
         "id" : "Vehicle",
@@ -131,9 +133,7 @@ require(['Cesium'], function(Cesium) {
         }
     }];
 
-    function useBuiltInCzml() {
-        Sandcastle.declare(useBuiltInCzml); // For highlighting in Sandcastle.
-
+    Sandcastle.addToolbarButton('Built-in CZML', function() {
         viewer.dataSources.removeAll();
 
         var czmlDataSource = new Cesium.CzmlDataSource();
@@ -141,55 +141,9 @@ require(['Cesium'], function(Cesium) {
         viewer.dataSources.add(czmlDataSource);
 
         // Zoom in a little closer...
-        var extent = new Cesium.Extent(-2.056, 0.587, -2.010, 0.633);
-        viewer.scene.getCamera().controller.viewExtent(extent);
-    }
-
-    function createButtons() {
-        var toolbar = document.getElementById('toolbar');
-
-        var button = document.createElement('button');
-        button.className = 'cesium-button';
-        button.onclick = function() {
-            czmlSatellites();
-            Sandcastle.highlight(czmlSatellites);
-        };
-        button.textContent = 'Satellites';
-        toolbar.appendChild(button);
-
-        button = document.createElement('button');
-        button.className = 'cesium-button';
-        button.onclick = function() {
-            czmlSensors();
-            Sandcastle.highlight(czmlSensors);
-        };
-        button.textContent = 'Sensors';
-        toolbar.appendChild(button);
-
-        button = document.createElement('button');
-        button.className = 'cesium-button';
-        button.onclick = function() {
-            czmlVehicle();
-            Sandcastle.highlight(czmlVehicle);
-        };
-        button.textContent = 'Vehicle';
-        toolbar.appendChild(button);
-
-        button = document.createElement('button');
-        button.className = 'cesium-button';
-        button.onclick = function() {
-            useBuiltInCzml();
-            Sandcastle.highlight(useBuiltInCzml);
-        };
-        button.textContent = 'Built-in CZML';
-        toolbar.appendChild(button);
-    }
-
-    var viewer = new Cesium.Viewer('cesiumContainer');
-    viewer.extend(Cesium.viewerDynamicObjectMixin);
-
-    czmlSatellites();
-    createButtons();
+        var rectangle = new Cesium.Rectangle(-2.056, 0.587, -2.010, 0.633);
+        viewer.scene.camera.viewRectangle(rectangle);
+    });
 
     Sandcastle.finishedLoading();
 });

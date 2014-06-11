@@ -1,16 +1,16 @@
 /*global defineSuite*/
 defineSuite([
-         'Widgets/Viewer/viewerDragDropMixin',
-         'Core/defined',
-         'Core/TimeInterval',
-         'Specs/EventHelper',
-         'Widgets/Viewer/Viewer'
-     ], function(
-         viewerDragDropMixin,
-         defined,
-         TimeInterval,
-         EventHelper,
-         Viewer) {
+        'Widgets/Viewer/viewerDragDropMixin',
+        'Core/defined',
+        'Core/TimeInterval',
+        'Specs/EventHelper',
+        'Widgets/Viewer/Viewer'
+    ], function(
+        viewerDragDropMixin,
+        defined,
+        TimeInterval,
+        EventHelper,
+        Viewer) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -55,6 +55,14 @@ defineSuite([
         viewer.extend(viewerDragDropMixin);
         expect(viewer.dropTarget).toBe(viewer.container);
         expect(viewer.dropEnabled).toEqual(true);
+        expect(viewer.clearOnDrop).toEqual(true);
+    });
+
+    it('clearOnDrop defaults to true when dataSourceBrowser is not used', function() {
+        viewer = new Viewer(container, {
+            dataSourceBrowser: false
+        });
+        viewer.extend(viewerDragDropMixin);
         expect(viewer.clearOnDrop).toEqual(true);
     });
 
@@ -113,15 +121,15 @@ defineSuite([
         EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
 
         waitsFor(function() {
-            return viewer.dataSources.getLength() === 1;
+            return viewer.dataSources.length === 1;
         });
 
         runs(function() {
             var dataSource = viewer.dataSources.get(0);
             var interval = TimeInterval.fromIso8601(czml1.availability);
-            expect(dataSource.getDynamicObjectCollection().getById('test')).toBeDefined();
-            expect(dataSource.getClock().startTime).toEqual(interval.start);
-            expect(dataSource.getClock().stopTime).toEqual(interval.stop);
+            expect(dataSource.dynamicObjects.getById('test')).toBeDefined();
+            expect(dataSource.clock.startTime).toEqual(interval.start);
+            expect(dataSource.clock.stopTime).toEqual(interval.stop);
         });
     });
 
@@ -148,18 +156,18 @@ defineSuite([
         EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
 
         waitsFor(function() {
-            return viewer.dataSources.getLength() === 2;
+            return viewer.dataSources.length === 2;
         });
 
         runs(function() {
             var source1 = viewer.dataSources.get(0);
             var source2 = viewer.dataSources.get(1);
-            expect(source1.getDynamicObjectCollection().getById('test')).toBeDefined();
-            expect(source2.getDynamicObjectCollection().getById('test2')).toBeDefined();
+            expect(source1.dynamicObjects.getById('test')).toBeDefined();
+            expect(source2.dynamicObjects.getById('test2')).toBeDefined();
             //Interval of first file should be used.
             var interval = TimeInterval.fromIso8601(czml1.availability);
-            expect(source1.getClock().startTime).toEqual(interval.start);
-            expect(source1.getClock().stopTime).toEqual(interval.stop);
+            expect(source1.clock.startTime).toEqual(interval.start);
+            expect(source1.clock.stopTime).toEqual(interval.stop);
         });
     });
 
@@ -186,25 +194,25 @@ defineSuite([
         EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
 
         waitsFor(function() {
-            return viewer.dataSources.getLength() === 2;
+            return viewer.dataSources.length === 2;
         });
 
         runs(function() {
             var source1 = viewer.dataSources.get(0);
             var source2 = viewer.dataSources.get(1);
-            expect(source1.getDynamicObjectCollection().getById('test')).toBeDefined();
-            expect(source2.getDynamicObjectCollection().getById('test2')).toBeDefined();
+            expect(source1.dynamicObjects.getById('test')).toBeDefined();
+            expect(source2.dynamicObjects.getById('test2')).toBeDefined();
             //Interval of first file should be used.
             var interval = TimeInterval.fromIso8601(czml1.availability);
-            expect(source1.getClock().startTime).toEqual(interval.start);
-            expect(source1.getClock().stopTime).toEqual(interval.stop);
+            expect(source1.clock.startTime).toEqual(interval.start);
+            expect(source1.clock.stopTime).toEqual(interval.stop);
 
             viewer.clearOnDrop = false;
             EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
         });
 
         waitsFor(function() {
-            return viewer.dataSources.getLength() === 4;
+            return viewer.dataSources.length === 4;
         });
 
         runs(function() {
@@ -213,32 +221,32 @@ defineSuite([
             var source3 = viewer.dataSources.get(2);
             var source4 = viewer.dataSources.get(3);
 
-            expect(source1.getDynamicObjectCollection().getById('test')).toBeDefined();
-            expect(source2.getDynamicObjectCollection().getById('test2')).toBeDefined();
-            expect(source3.getDynamicObjectCollection().getById('test')).toBeDefined();
-            expect(source4.getDynamicObjectCollection().getById('test2')).toBeDefined();
+            expect(source1.dynamicObjects.getById('test')).toBeDefined();
+            expect(source2.dynamicObjects.getById('test2')).toBeDefined();
+            expect(source3.dynamicObjects.getById('test')).toBeDefined();
+            expect(source4.dynamicObjects.getById('test2')).toBeDefined();
 
             viewer.clearOnDrop = true;
             EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
         });
 
         waitsFor(function() {
-            return viewer.dataSources.getLength() === 2;
+            return viewer.dataSources.length === 2;
         });
 
         runs(function() {
             var source1 = viewer.dataSources.get(0);
             var source2 = viewer.dataSources.get(1);
-            expect(source1.getDynamicObjectCollection().getById('test')).toBeDefined();
-            expect(source2.getDynamicObjectCollection().getById('test2')).toBeDefined();
+            expect(source1.dynamicObjects.getById('test')).toBeDefined();
+            expect(source2.dynamicObjects.getById('test2')).toBeDefined();
             //Interval of first file should be used.
             var interval = TimeInterval.fromIso8601(czml1.availability);
-            expect(source1.getClock().startTime).toEqual(interval.start);
-            expect(source1.getClock().stopTime).toEqual(interval.stop);
+            expect(source1.clock.startTime).toEqual(interval.start);
+            expect(source1.clock.stopTime).toEqual(interval.stop);
         });
     });
 
-    it('onDropError is raised on exception', function() {
+    it('dropError is raised on exception', function() {
         var mockEvent = {
             dataTransfer : {
                 files : [{
@@ -257,7 +265,7 @@ defineSuite([
 
         var spyListener = jasmine.createSpy('listener');
 
-        viewer.onDropError.addEventListener(spyListener);
+        viewer.dropError.addEventListener(spyListener);
         EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
 
         waitsFor(function() {
@@ -267,11 +275,11 @@ defineSuite([
         runs(function() {
             expect(spyListener).toHaveBeenCalledWith(viewer, 'czml1.czml', jasmine.any(SyntaxError));
 
-            viewer.onDropError.removeEventListener(spyListener);
+            viewer.dropError.removeEventListener(spyListener);
         });
     });
 
-    it('onDropError is raised FileReader error', function() {
+    it('dropError is raised FileReader error', function() {
         var mockEvent = {
             dataTransfer : {
                 files : [{
@@ -290,7 +298,7 @@ defineSuite([
 
         var spyListener = jasmine.createSpy('listener');
 
-        viewer.onDropError.addEventListener(spyListener);
+        viewer.dropError.addEventListener(spyListener);
         EventHelper.fireMockEvent(viewer._handleDrop, mockEvent);
 
         waitsFor(function() {
@@ -300,7 +308,7 @@ defineSuite([
         runs(function() {
             expect(spyListener).toHaveBeenCalledWith(viewer, mockEvent.dataTransfer.files[0].name, mockEvent.dataTransfer.files[0].errorMessage);
 
-            viewer.onDropError.removeEventListener(spyListener);
+            viewer.dropError.removeEventListener(spyListener);
         });
     });
 
@@ -378,7 +386,7 @@ defineSuite([
     it('throws with undefined viewer', function() {
         expect(function() {
             viewerDragDropMixin(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with non-existant string container', function() {
@@ -387,7 +395,7 @@ defineSuite([
             viewer.extend(viewerDragDropMixin, {
                 dropTarget : 'doesNotExist'
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws if dropTarget property already added by another mixin.', function() {
@@ -395,7 +403,7 @@ defineSuite([
         viewer.dropTarget = true;
         expect(function() {
             viewer.extend(viewerDragDropMixin);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws if dropEnabled property already added by another mixin.', function() {
@@ -403,15 +411,15 @@ defineSuite([
         viewer.dropEnabled = true;
         expect(function() {
             viewer.extend(viewerDragDropMixin);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
-    it('throws if onDropError property already added by another mixin.', function() {
+    it('throws if dropError property already added by another mixin.', function() {
         viewer = new Viewer(container);
-        viewer.onDropError = true;
+        viewer.dropError = true;
         expect(function() {
             viewer.extend(viewerDragDropMixin);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws if clearOnDrop property already added by another mixin.', function() {
@@ -419,7 +427,7 @@ defineSuite([
         viewer.clearOnDrop = true;
         expect(function() {
             viewer.extend(viewerDragDropMixin);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('setting dropTarget to undefined throws exception', function() {
@@ -427,6 +435,6 @@ defineSuite([
         viewer.extend(viewerDragDropMixin);
         expect(function() {
             viewer.dropTarget = undefined;
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 }, 'WebGL');

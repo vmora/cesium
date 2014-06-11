@@ -1,23 +1,49 @@
 /*global defineSuite*/
 defineSuite([
-             'DynamicScene/SampledProperty',
-             'Core/defined',
-             'Core/JulianDate',
-             'Core/LinearApproximation',
-             'Core/LagrangePolynomialApproximation'
-     ], function(
-             SampledProperty,
-             defined,
-             JulianDate,
-             LinearApproximation,
-             LagrangePolynomialApproximation) {
+        'DynamicScene/SampledProperty',
+        'Core/Cartesian3',
+        'Core/defined',
+        'Core/HermitePolynomialApproximation',
+        'Core/JulianDate',
+        'Core/LagrangePolynomialApproximation',
+        'Core/LinearApproximation',
+        'Core/Math',
+        'Core/Quaternion'
+    ], function(
+        SampledProperty,
+        Cartesian3,
+        defined,
+        HermitePolynomialApproximation,
+        JulianDate,
+        LagrangePolynomialApproximation,
+        LinearApproximation,
+        CesiumMath,
+        Quaternion) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     it('constructor sets expected defaults', function() {
-        var property = new SampledProperty(Number);
+        var property = new SampledProperty(Cartesian3);
         expect(property.interpolationDegree).toEqual(1);
         expect(property.interpolationAlgorithm).toEqual(LinearApproximation);
+        expect(property.isConstant).toEqual(true);
+        expect(property.type).toBe(Cartesian3);
+        expect(property.derivativeTypes).toBeUndefined();
+
+        var derivatives = [Cartesian3, Cartesian3];
+        property = new SampledProperty(Quaternion, derivatives);
+        expect(property.interpolationDegree).toEqual(1);
+        expect(property.interpolationAlgorithm).toEqual(LinearApproximation);
+        expect(property.isConstant).toEqual(true);
+        expect(property.type).toBe(Quaternion);
+        expect(property.derivativeTypes).toBe(derivatives);
+    });
+
+    it('isConstant works', function() {
+        var property = new SampledProperty(Number);
+        expect(property.isConstant).toEqual(true);
+        property.addSample(new JulianDate(0, 0), 1);
+        expect(property.isConstant).toEqual(false);
     });
 
     it('addSamplesPackedArray works', function() {
@@ -25,7 +51,12 @@ defineSuite([
         var epoch = new JulianDate(0, 0);
 
         var property = new SampledProperty(Number);
+        var listener = jasmine.createSpy('listener');
+        property.definitionChanged.addEventListener(listener);
+
         property.addSamplesPackedArray(data, epoch);
+
+        expect(listener).toHaveBeenCalledWith(property);
         expect(property.getValue(epoch)).toEqual(7);
         expect(property.getValue(new JulianDate(0, 0.5))).toEqual(7.5);
     });
@@ -35,9 +66,20 @@ defineSuite([
         var times = [new JulianDate(0, 0), new JulianDate(1, 0), new JulianDate(2, 0)];
 
         var property = new SampledProperty(Number);
+        var listener = jasmine.createSpy('listener');
+        property.definitionChanged.addEventListener(listener);
+
         property.addSample(times[0], values[0]);
+        expect(listener).toHaveBeenCalledWith(property);
+        listener.reset();
+
         property.addSample(times[1], values[1]);
+        expect(listener).toHaveBeenCalledWith(property);
+        listener.reset();
+
         property.addSample(times[2], values[2]);
+        expect(listener).toHaveBeenCalledWith(property);
+        listener.reset();
 
         expect(property.getValue(times[0])).toEqual(values[0]);
         expect(property.getValue(times[1])).toEqual(values[1]);
@@ -50,7 +92,11 @@ defineSuite([
         var times = [new JulianDate(0, 0), new JulianDate(1, 0), new JulianDate(2, 0)];
 
         var property = new SampledProperty(Number);
+        var listener = jasmine.createSpy('listener');
+        property.definitionChanged.addEventListener(listener);
         property.addSamples(times, values);
+
+        expect(listener).toHaveBeenCalledWith(property);
         expect(property.getValue(times[0])).toEqual(values[0]);
         expect(property.getValue(times[1])).toEqual(values[1]);
         expect(property.getValue(times[2])).toEqual(values[2]);
@@ -136,12 +182,20 @@ defineSuite([
         };
 
         var property = new SampledProperty(Number);
+        var listener = jasmine.createSpy('listener');
+        property.definitionChanged.addEventListener(listener);
+
         property.addSamplesPackedArray(data, epoch);
+
         expect(property.getValue(epoch)).toEqual(7);
         expect(property.getValue(new JulianDate(0, 1))).toEqual(8);
 
-        property.interpolationDegree = 2;
-        property.interpolationAlgorithm = MockInterpolation;
+        property.setInterpolationOptions({
+            interpolationAlgorithm : MockInterpolation,
+            interpolationDegree : 2
+        });
+
+        expect(listener).toHaveBeenCalledWith(property);
         expect(property.getValue(epoch)).toEqual(7);
         expect(property.getValue(new JulianDate(0, 3))).toEqual(2);
 
@@ -288,32 +342,40 @@ defineSuite([
     it('constructor throws without type parameter.', function() {
         expect(function() {
             return new SampledProperty(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('equals works when interpolators differ', function() {
         var left = new SampledProperty(Number);
-        left.interpolationAlgorithm = LinearApproximation;
-
         var right = new SampledProperty(Number);
-        right.interpolationAlgorithm = LinearApproximation;
 
         expect(left.equals(right)).toEqual(true);
-        right.interpolationAlgorithm = LagrangePolynomialApproximation;
+        right.setInterpolationOptions({
+            interpolationAlgorithm : LagrangePolynomialApproximation
+        });
         expect(left.equals(right)).toEqual(false);
     });
 
     it('equals works when interpolator degree differ', function() {
         var left = new SampledProperty(Number);
-        left.interpolationAlgorithm = LagrangePolynomialApproximation;
-        left.interpolationDegree = 2;
+
+        left.setInterpolationOptions({
+            interpolationDegree : 2,
+            interpolationAlgorithm : LagrangePolynomialApproximation
+        });
 
         var right = new SampledProperty(Number);
-        right.interpolationAlgorithm = LagrangePolynomialApproximation;
-        right.interpolationDegree = 2;
+        right.setInterpolationOptions({
+            interpolationDegree : 2,
+            interpolationAlgorithm : LagrangePolynomialApproximation
+        });
 
         expect(left.equals(right)).toEqual(true);
-        right.interpolationDegree = 3;
+        right.setInterpolationOptions({
+            interpolationDegree : 3,
+            interpolationAlgorithm : LagrangePolynomialApproximation
+        });
+
         expect(left.equals(right)).toEqual(false);
     });
 
@@ -328,5 +390,225 @@ defineSuite([
 
         right.addSample(time, 5);
         expect(left.equals(right)).toEqual(true);
+    });
+
+    it('equals works when derivatives differ', function() {
+        var left = new SampledProperty(Number, [Number]);
+        var right = new SampledProperty(Number);
+        expect(left.equals(right)).toEqual(false);
+
+        left = new SampledProperty(Number, [Number]);
+        right = new SampledProperty(Number, [Number]);
+        expect(left.equals(right)).toEqual(true);
+
+        left = new SampledProperty(Number, [Number]);
+        right = new SampledProperty(Number, [Number, Number]);
+        expect(left.equals(right)).toEqual(false);
+
+        left = new SampledProperty(Cartesian3, [Cartesian3, Number]);
+        right = new SampledProperty(Cartesian3, [Number, Number]);
+        expect(left.equals(right)).toEqual(false);
+    });
+
+    //The remaining tests were verified with STK Components available from http://www.agi.com.
+    it('addSample works with multiple derivatives', function() {
+        var results = [0, -3.39969163485071, 0.912945250727628, -6.17439797860995, 0.745113160479349, -1.63963048028446, -0.304810621102217, 4.83619040459681, -0.993888653923375, 169.448966391543];
+
+        var property = new SampledProperty(Number, [Number, Number]);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        for (var x = 0; x < 100; x += 20) {
+            property.addSample(epoch.addSeconds(x), Math.sin(x), [Math.cos(x), -Math.sin(x)]);
+        }
+        var resultIndex = 0;
+        for (var i = 0; i < 100; i += 10) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(results[resultIndex++], CesiumMath.EPSILON12);
+        }
+    });
+
+    var epoch = JulianDate.fromIso8601('2014-01-01T00:00:00');
+    var times = [epoch.addSeconds(0),
+                 epoch.addSeconds(60),
+                 epoch.addSeconds(120),
+                 epoch.addSeconds(180),
+                 epoch.addSeconds(240),
+                 epoch.addSeconds(300),
+                 epoch.addSeconds(360),
+                 epoch.addSeconds(420)];
+
+    var positions = [new Cartesian3(13378137.0000000, 0.000000000, 1),
+                     new Cartesian3(13374128.3576279, 327475.593690065, 2),
+                     new Cartesian3(13362104.8328212, 654754.936954423, 3),
+                     new Cartesian3(13342073.6310691, 981641.896976832, 4),
+                     new Cartesian3(13314046.7567223, 1307940.576089510, 5),
+                     new Cartesian3(13278041.0057990, 1633455.429171170, 6),
+                     new Cartesian3(13234077.9559193, 1957991.380833850, 7),
+                     new Cartesian3(13182183.9533740, 2281353.942328160, 8)];
+
+    var derivatives = [[new Cartesian3(0.000000000000, 5458.47176691947, 0)],
+                       [new Cartesian3(-133.614738921601, 5456.83618333919, 0)],
+                       [new Cartesian3(-267.149404854867, 5451.93041277513, 0)],
+                       [new Cartesian3(-400.523972797808, 5443.75739517027, 0)],
+                       [new Cartesian3(-533.658513692378, 5432.32202847183, 0)],
+                       [new Cartesian3(-666.473242324565, 5417.63116569613, 0)],
+                       [new Cartesian3(-798.888565138278, 5399.69361082164, 0)],
+                       [new Cartesian3(-930.825127934390, 5378.52011351288, 0)]];
+
+    var order0Results = [new Cartesian3(13378137, 0, 1),
+                  new Cartesian3(13376800.785876, 109158.531230022, 1.33333333333333),
+                  new Cartesian3(13375464.5717519, 218317.062460043, 1.66666666666667),
+                  new Cartesian3(13374128.3576279, 327475.593690065, 2),
+                  new Cartesian3(13370120.5160257, 436568.708111518, 2.33333333333333),
+                  new Cartesian3(13366112.6744234, 545661.82253297, 2.66666666666667),
+                  new Cartesian3(13362104.8328212, 654754.936954423, 3),
+                  new Cartesian3(13355427.7655705, 763717.256961893, 3.33333333333333),
+                  new Cartesian3(13348750.6983198, 872679.576969362, 3.66666666666667),
+                  new Cartesian3(13342073.6310691, 981641.896976832, 4),
+                  new Cartesian3(13332731.3396202, 1090408.12334772, 4.33333333333333),
+                  new Cartesian3(13323389.0481712, 1199174.34971862, 4.66666666666667),
+                  new Cartesian3(13314046.7567223, 1307940.57608951, 5),
+                  new Cartesian3(13302044.8397479, 1416445.52711673, 5.33333333333333),
+                  new Cartesian3(13290042.9227734, 1524950.47814395, 5.66666666666667),
+                  new Cartesian3(13278041.005799, 1633455.42917117, 6),
+                  new Cartesian3(13263386.6558391, 1741634.0797254, 6.33333333333333),
+                  new Cartesian3(13248732.3058792, 1849812.73027962, 6.66666666666667),
+                  new Cartesian3(13234077.9559193, 1957991.38083385, 7),
+                  new Cartesian3(13216779.9550709, 2065778.90133195, 7.33333333333333),
+                  new Cartesian3(13199481.9542224, 2173566.42183006, 7.66666666666667),
+                  new Cartesian3(13182183.953374, 2281353.94232816, 8)];
+
+    var order1Results = [new Cartesian3(13378137, 0, 1),
+                  new Cartesian3(13377691.5656321, 109168.223625571, 1.25925925925926),
+                  new Cartesian3(13376355.3218481, 218329.177845564, 1.74074074074074),
+                  new Cartesian3(13374128.3576279, 327475.593690065, 2),
+                  new Cartesian3(13371010.7916129, 436600.202479654, 2.25925925925926),
+                  new Cartesian3(13367002.8610487, 545695.738439022, 2.74074074074074),
+                  new Cartesian3(13362104.8328212, 654754.936954423, 3),
+                  new Cartesian3(13356317.0034622, 763770.534428588, 3.25925925925926),
+                  new Cartesian3(13349639.7880007, 872735.273070732, 3.74074074074074),
+                  new Cartesian3(13342073.6310691, 981641.896976832, 4),
+                  new Cartesian3(13333619.0069115, 1090483.15198472, 4.25925925925926),
+                  new Cartesian3(13324276.5080919, 1199251.7926376, 4.74074074074074),
+                  new Cartesian3(13314046.7567223, 1307940.57608951, 5),
+                  new Cartesian3(13302930.4044753, 1416542.26196067, 5.25925925925926),
+                  new Cartesian3(13290928.2210945, 1525049.62147035, 5.74074074074074),
+                  new Cartesian3(13278041.005799, 1633455.42917117, 6),
+                  new Cartesian3(13264269.587299, 1741752.46280477, 6.25925925925926),
+                  new Cartesian3(13249614.9120568, 1849933.51459858, 6.74074074074074),
+                  new Cartesian3(13234077.9559193, 1957991.38083385, 7),
+                  new Cartesian3(13217659.7241379, 2065918.86170184, 7.25925925925926),
+                  new Cartesian3(13200361.339326, 2173708.77475762, 7.74074074074074),
+                  new Cartesian3(13182183.953374, 2281353.94232816, 8)];
+
+    it('addSample works with derivatives', function() {
+        var property = new SampledProperty(Cartesian3, [Cartesian3]);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        for (var x = 0; x < times.length; x++) {
+            property.addSample(times[x], positions[x], derivatives[x]);
+        }
+        var resultIndex = 0;
+        for (var i = 0; i < 420; i += 20) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(order1Results[resultIndex++], CesiumMath.EPSILON7);
+        }
+    });
+
+    it('addSample works without derivatives', function() {
+        var property = new SampledProperty(Cartesian3);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        for (var x = 0; x < times.length; x++) {
+            property.addSample(times[x], positions[x]);
+        }
+
+        var resultIndex = 0;
+        for (var i = 0; i < 420; i += 20) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(order0Results[resultIndex++], CesiumMath.EPSILON7);
+        }
+    });
+
+    it('addSamples works with derivatives', function() {
+        var property = new SampledProperty(Cartesian3, [Cartesian3]);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        property.addSamples(times, positions, derivatives);
+        var resultIndex = 0;
+        for (var i = 0; i < 420; i += 20) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(order1Results[resultIndex++], CesiumMath.EPSILON7);
+        }
+    });
+
+    it('addSamples works without derivatives', function() {
+        var property = new SampledProperty(Cartesian3);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        property.addSamples(times, positions);
+        var resultIndex = 0;
+        for (var i = 0; i < 420; i += 20) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(order0Results[resultIndex++], CesiumMath.EPSILON7);
+        }
+    });
+
+    it('addSamplesPackedArray works with derivatives', function() {
+        var property = new SampledProperty(Cartesian3, [Cartesian3]);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        var data = [];
+        for (var x = 0; x < times.length; x++) {
+            data.push(times[x]);
+            Cartesian3.pack(positions[x], data, data.length);
+            Cartesian3.pack(derivatives[x][0], data, data.length);
+        }
+        property.addSamplesPackedArray(data);
+
+        var resultIndex = 0;
+        for (var i = 0; i < 420; i += 20) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(order1Results[resultIndex++], CesiumMath.EPSILON7);
+        }
+    });
+
+    it('addSamplesPackedArray works without derivatives', function() {
+        var property = new SampledProperty(Cartesian3);
+        property.setInterpolationOptions({
+            interpolationAlgorithm : HermitePolynomialApproximation,
+            interpolationDegree : 1
+        });
+
+        var data = [];
+        for (var x = 0; x < times.length; x++) {
+            data.push(times[x]);
+            Cartesian3.pack(positions[x], data, data.length);
+        }
+        property.addSamplesPackedArray(data);
+
+        var resultIndex = 0;
+        for (var i = 0; i < 420; i += 20) {
+            var result = property.getValue(epoch.addSeconds(i));
+            expect(result).toEqualEpsilon(order0Results[resultIndex++], CesiumMath.EPSILON7);
+        }
     });
 });

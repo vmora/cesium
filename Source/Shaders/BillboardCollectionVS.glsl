@@ -3,19 +3,18 @@ attribute vec3 positionLow;
 attribute vec2 direction;                       // in screen space
 attribute vec4 textureCoordinatesAndImageSize;  // size in normalized texture coordinates
 attribute vec3 originAndShow;                   // show is 0.0 (false) or 1.0 (true)
-attribute vec2 pixelOffset;
+attribute vec4 pixelOffsetAndTranslate;         // x,y, translateX, translateY
 attribute vec4 eyeOffsetAndScale;               // eye offset in meters
 attribute vec4 rotationAndAlignedAxis;
 attribute vec4 scaleByDistance;                 // near, nearScale, far, farScale
 attribute vec4 translucencyByDistance;          // near, nearTrans, far, farTrans
+attribute vec4 pixelOffsetScaleByDistance;      // near, nearScale, far, farScale
 
 #ifdef RENDER_FOR_PICK
 attribute vec4 pickColor;
 #else
 attribute vec4 color;
 #endif
-
-const vec2 czm_highResolutionSnapScale = vec2(1.0, 1.0);    // TODO
 
 varying vec2 v_textureCoordinates;
 
@@ -53,6 +52,8 @@ void main()
     vec2 imageSize = textureCoordinatesAndImageSize.zw;
     vec2 origin = originAndShow.xy;
     float show = originAndShow.z;
+    vec2 pixelOffset = pixelOffsetAndTranslate.xy;
+    vec2 translate = pixelOffsetAndTranslate.zw;
     
     ///////////////////////////////////////////////////////////////////////////
     
@@ -63,7 +64,7 @@ void main()
     
     ///////////////////////////////////////////////////////////////////////////     
 
-#if defined(EYE_DISTANCE_SCALING) || defined(EYE_DISTANCE_TRANSLUCENCY)
+#if defined(EYE_DISTANCE_SCALING) || defined(EYE_DISTANCE_TRANSLUCENCY) || defined(EYE_DISTANCE_PIXEL_OFFSET)
     float lengthSq;
     if (czm_sceneMode == czm_sceneMode2D)
     {
@@ -96,9 +97,14 @@ void main()
     }
 #endif
 
+#ifdef EYE_DISTANCE_PIXEL_OFFSET
+    float pixelOffsetScale = getNearFarScalar(pixelOffsetScaleByDistance, lengthSq);
+    pixelOffset *= pixelOffsetScale;
+#endif
+
     vec4 positionWC = czm_eyeToWindowCoordinates(positionEC);
     
-    vec2 halfSize = imageSize * scale * czm_highResolutionSnapScale;
+    vec2 halfSize = imageSize * scale * czm_resolutionScale;
     halfSize *= ((direction * 2.0) - 1.0);
     
     positionWC.xy += (origin * abs(halfSize));
@@ -127,7 +133,8 @@ void main()
 #endif
     
     positionWC.xy += halfSize;
-    positionWC.xy += (pixelOffset * czm_highResolutionSnapScale);
+    positionWC.xy += translate;
+    positionWC.xy += (pixelOffset * czm_resolutionScale);
 
     gl_Position = czm_viewportOrthographic * vec4(positionWC.xy, -positionWC.z, 1.0);
     v_textureCoordinates = textureCoordinates;

@@ -4,24 +4,21 @@ define([
         'Core/Color',
         'Renderer/ClearCommand',
         'Scene/CreditDisplay',
-        'Scene/FrameState'
+        'Scene/FrameState',
+        'Scene/Pass'
     ], function(
         BoundingRectangle,
         Color,
         ClearCommand,
         CreditDisplay,
-        FrameState) {
+        FrameState,
+        Pass) {
     "use strict";
 
-    function executeList(context, passState, commandLists, listName) {
-        var length = commandLists.length;
+    function executeCommands(context, passState, commands) {
+        var length = commands.length;
         for (var i = 0; i < length; ++i) {
-            var commandList = commandLists[i].pickList[listName];
-            var commandListLength = commandList.length;
-            for (var j = 0; j < commandListLength; ++j) {
-                var command = commandList[j];
-                command.execute(context, passState);
-            }
+            commands[i].execute(context, passState);
         }
     }
 
@@ -34,17 +31,31 @@ define([
         frameState.passes = (new FrameState(new CreditDisplay(document.createElement('div')))).passes;
         frameState.passes.pick = true;
 
-        var commandLists = [];
-        primitives.update(context, frameState, commandLists);
+        var commands = [];
+        primitives.update(context, frameState, commands);
 
-        var clear = new ClearCommand();
-        clear.color = new Color(0.0, 0.0, 0.0, 0.0);
-        clear.depth = 1.0;
-        clear.stencil = 1.0;
+        var clear = new ClearCommand({
+            color : new Color(0.0, 0.0, 0.0, 0.0),
+            depth : 1.0,
+            stencil : 1.0
+        });
         clear.execute(context, passState);
 
-        executeList(context, passState, commandLists, 'opaqueList');
-        executeList(context, passState, commandLists, 'translucentList');
+        var opaqueCommands = [];
+        var translucentCommands = [];
+
+        var length = commands.length;
+        for (var i = 0; i < length; i++) {
+            var command = commands[i];
+            if (command.pass === Pass.OPAQUE) {
+                opaqueCommands.push(command);
+            } else if (command.pass === Pass.TRANSLUCENT) {
+                translucentCommands.push(command);
+            }
+        }
+
+        executeCommands(context, passState, opaqueCommands);
+        executeCommands(context, passState, translucentCommands);
 
         frameState.passes = oldPasses;
 

@@ -1,36 +1,36 @@
 /*global defineSuite*/
 defineSuite([
         'Scene/Material',
-        'Scene/Polygon',
-        'Scene/PolylineCollection',
-        'Specs/createContext',
-        'Specs/destroyContext',
-        'Specs/createCamera',
-        'Specs/createFrameState',
-        'Specs/frameState',
-        'Specs/render',
         'Core/Cartesian3',
         'Core/Cartographic',
         'Core/Color',
         'Core/Ellipsoid',
         'Core/Math',
-        'Renderer/ClearCommand'
+        'Renderer/ClearCommand',
+        'Scene/Polygon',
+        'Scene/PolylineCollection',
+        'Specs/createCamera',
+        'Specs/createContext',
+        'Specs/createFrameState',
+        'Specs/destroyContext',
+        'Specs/frameState',
+        'Specs/render'
     ], function(
         Material,
-        Polygon,
-        PolylineCollection,
-        createContext,
-        destroyContext,
-        createCamera,
-        createFrameState,
-        frameState,
-        render,
         Cartesian3,
         Cartographic,
         Color,
         Ellipsoid,
         CesiumMath,
-        ClearCommand) {
+        ClearCommand,
+        Polygon,
+        PolylineCollection,
+        createCamera,
+        createContext,
+        createFrameState,
+        destroyContext,
+        frameState,
+        render) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -49,19 +49,21 @@ defineSuite([
     });
 
     beforeEach(function() {
-        us = context.getUniformState();
-        us.update(context, createFrameState(createCamera(context, new Cartesian3(1.02, 0.0, 0.0), Cartesian3.ZERO, Cartesian3.UNIT_Z)));
+        us = context.uniformState;
+        us.update(context, createFrameState(createCamera({
+            eye : new Cartesian3(1.02, 0.0, 0.0),
+            target : Cartesian3.ZERO,
+            up : Cartesian3.UNIT_Z
+        })));
 
         var ellipsoid = Ellipsoid.UNIT_SPHERE;
         polygon = new Polygon();
         polygon.ellipsoid = ellipsoid;
         polygon.granularity = CesiumMath.toRadians(20.0);
-        polygon.setPositions([
-            ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0)),
+        polygon.positions = [ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0)),
             ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(50.0, -50.0, 0.0)),
             ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(50.0, 50.0, 0.0)),
-            ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0))
-        ]);
+            ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0))];
         polygon.asynchronous = false;
 
         polylines = new PolylineCollection();
@@ -91,7 +93,7 @@ defineSuite([
     }
 
     function renderPolylineMaterial(material) {
-        polyline.setMaterial(material);
+        polyline.material = material;
 
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
@@ -166,26 +168,6 @@ defineSuite([
         verifyMaterial('Fresnel');
     });
 
-    it('draws Brick built-in material', function() {
-        verifyMaterial('Brick');
-    });
-
-    it('draws Wood built-in material', function() {
-        verifyMaterial('Wood');
-    });
-
-    it('draws Asphalt built-in material', function() {
-        verifyMaterial('Asphalt');
-    });
-
-    it('draws Cement built-in material', function() {
-        verifyMaterial('Cement');
-    });
-
-    it('draws Grass built-in material', function() {
-        verifyMaterial('Grass');
-    });
-
     it('draws Grid built-in material', function() {
         verifyMaterial('Grid');
     });
@@ -202,28 +184,12 @@ defineSuite([
         verifyMaterial('Dot');
     });
 
-    it('draws TieDye built-in material', function() {
-        verifyMaterial('TieDye');
-    });
-
-    it('draws Facet built-in material', function() {
-        verifyMaterial('Facet');
-    });
-
     it('draws Water built-in material', function() {
         verifyMaterial('Water');
     });
 
-    it('draws Blob built-in material', function() {
-        verifyMaterial('Blob');
-    });
-
     it('draws RimLighting built-in material', function() {
         verifyMaterial('RimLighting');
-    });
-
-    it('draws Erosion built-in material', function() {
-        verifyMaterial('Erosion');
     });
 
     it('draws Fade built-in material', function() {
@@ -487,12 +453,23 @@ defineSuite([
         expect(pixel).not.toEqual([0, 0, 0, 0]);
     });
 
-    it('create multiple materials from the same type', function() {
-        var material1 = Material.fromType('Color');
-        material1.uniforms.color = new Color(0.0, 1.0, 0.0, 1.0);
+    it('create material using fromType and overide default uniforms', function() {
+        var material1 = Material.fromType('Color', {
+            color : new Color(0.0, 1.0, 0.0, 1.0)
+        });
 
-        var material2 = Material.fromType('Color');
-        material2.uniforms.color = new Color(0.0, 0.0, 1.0, 1.0);
+        var pixel = renderMaterial(material1);
+        expect(pixel).toEqual([0, 255, 0, 255]);
+    });
+
+    it('create multiple materials from the same type', function() {
+        var material1 = Material.fromType('Color', {
+            color : new Color(0.0, 1.0, 0.0, 1.0)
+        });
+
+        var material2 = Material.fromType('Color', {
+            color : new Color(0.0, 0.0, 1.0, 1.0)
+        });
 
         expect(material1.shaderSource).toEqual(material2.shaderSource);
 
@@ -543,7 +520,7 @@ defineSuite([
                              'return material;\n}\n'
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         expect(function() {
             return new Material({
@@ -555,7 +532,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with duplicate names in materials and uniforms', function () {
@@ -572,7 +549,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with invalid template type', function() {
@@ -583,7 +560,7 @@ defineSuite([
                     invalid : 3.0
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with invalid component type', function () {
@@ -596,7 +573,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with invalid uniform type', function() {
@@ -615,7 +592,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         expect(function() {
             return new Material({
@@ -626,7 +603,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with unused channels', function() {
@@ -639,7 +616,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         // If strict is false, unused uniform strings are ignored.
         var material = new Material({
@@ -668,7 +645,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         // If strict is false, unused uniforms are ignored.
         var material = new Material({
@@ -699,7 +676,7 @@ defineSuite([
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         // If strict is false, unused materials are ignored.
         var material = new Material({
@@ -719,7 +696,7 @@ defineSuite([
     it('throws with invalid type sent to fromType', function() {
         expect(function() {
             return Material.fromType('Nothing');
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('destroys material with texture', function() {

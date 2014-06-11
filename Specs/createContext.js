@@ -43,20 +43,22 @@ define([
     function createContext(options, canvasWidth, canvasHeight) {
         // clone options so we can change properties
         options = clone(defaultValue(options, {}));
-        options.alpha = defaultValue(options.alpha, true);
+        options.webgl = clone(defaultValue(options.webgl, {}));
+        options.webgl.alpha = defaultValue(options.webgl.alpha, true);
+        options.webgl.antialias = defaultValue(options.webgl.antialias, false);
 
         var canvas = createCanvas(canvasWidth, canvasHeight);
         var context = new Context(canvas, options);
 
         var parameters = getQueryParameters();
         if (!defined(parameters.skipWebGLValidation)) {
-            context.setValidateShaderProgram(true);
-            context.setValidateFramebuffer(true);
-            context.setLogShaderCompilation(true);
-            context.setThrowOnWebGLError(true);
+            context.validateShaderProgram = true;
+            context.validateFramebuffer = true;
+            context.logShaderCompilation = true;
+            context.throwOnWebGLError = true;
         }
 
-        var us = context.getUniformState();
+        var us = context.uniformState;
         us.update(context, createFrameState());
 
         return context;

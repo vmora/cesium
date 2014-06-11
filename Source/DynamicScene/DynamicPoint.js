@@ -1,5 +1,6 @@
 /*global define*/
-define(['../Core/defaultValue',
+define([
+        '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/DeveloperError',
@@ -21,23 +22,31 @@ define(['../Core/defaultValue',
      */
     var DynamicPoint = function() {
         this._color = undefined;
+        this._colorSubscription = undefined;
         this._pixelSize = undefined;
+        this._pixelSizeSubscription = undefined;
         this._outlineColor = undefined;
+        this._outlineColorSubscription = undefined;
         this._outlineWidth = undefined;
+        this._outlineWidthSubscription = undefined;
         this._show = undefined;
+        this._showSubscription = undefined;
         this._scaleByDistance = undefined;
-        this._propertyChanged = new Event();
+        this._scaleByDistanceSubscription = undefined;
+        this._definitionChanged = new Event();
     };
 
     defineProperties(DynamicPoint.prototype, {
         /**
          * Gets the event that is raised whenever a new property is assigned.
          * @memberof DynamicPoint.prototype
+         *
          * @type {Event}
+         * @readonly
          */
-        propertyChanged : {
+        definitionChanged : {
             get : function() {
-                return this._propertyChanged;
+                return this._definitionChanged;
             }
         },
 
@@ -46,48 +55,47 @@ define(['../Core/defaultValue',
          * @memberof DynamicPoint.prototype
          * @type {Property}
          */
-        color : createDynamicPropertyDescriptor('color', '_color'),
+        color : createDynamicPropertyDescriptor('color'),
 
         /**
          * Gets or sets the numeric {@link Property} specifying the point's size in pixels.
          * @memberof DynamicPoint.prototype
          * @type {Property}
          */
-        pixelSize : createDynamicPropertyDescriptor('pixelSize', '_pixelSize'),
+        pixelSize : createDynamicPropertyDescriptor('pixelSize'),
 
         /**
          * Gets or sets the {@link Color} {@link Property} specifying the the point's outline color.
          * @memberof DynamicPoint.prototype
          * @type {Property}
          */
-        outlineColor : createDynamicPropertyDescriptor('outlineColor', '_outlineColor'),
+        outlineColor : createDynamicPropertyDescriptor('outlineColor'),
 
         /**
          * Gets or sets the numeric {@link Property} specifying the the point's outline width.
          * @memberof DynamicPoint.prototype
          * @type {Property}
          */
-        outlineWidth : createDynamicPropertyDescriptor('outlineWidth', '_outlineWidth'),
+        outlineWidth : createDynamicPropertyDescriptor('outlineWidth'),
 
         /**
          * Gets or sets the boolean {@link Property} specifying the point's visibility.
          * @memberof DynamicPoint.prototype
          * @type {Property}
          */
-        show : createDynamicPropertyDescriptor('show', '_show'),
+        show : createDynamicPropertyDescriptor('show'),
 
         /**
          * Gets or sets the {@link NearFarScalar} {@link Property} used to scale billboards based on distance.
          * If undefined, a constant size is used.
-         * @memberof DynamicBillboard.prototype
+         * @memberof DynamicPoint.prototype
          * @type {Property}
          */
-        scaleByDistance : createDynamicPropertyDescriptor('scaleByDistance', '_scaleByDistance')
+        scaleByDistance : createDynamicPropertyDescriptor('scaleByDistance')
     });
 
     /**
      * Duplicates a DynamicPoint instance.
-     * @memberof DynamicPoint
      *
      * @param {DynamicPoint} [result] The object onto which to store the result.
      * @returns {DynamicPoint} The modified result parameter or a new instance if one was not provided.
@@ -108,15 +116,16 @@ define(['../Core/defaultValue',
     /**
      * Assigns each unassigned property on this object to the value
      * of the same property on the provided source object.
-     * @memberof DynamicPoint
      *
      * @param {DynamicPoint} source The object to be merged into this object.
-     * @exception {DeveloperError} source is required.
      */
     DynamicPoint.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
         if (!defined(source)) {
             throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
+
         this.color = defaultValue(this.color, source.color);
         this.pixelSize = defaultValue(this.pixelSize, source.pixelSize);
         this.outlineColor = defaultValue(this.outlineColor, source.outlineColor);

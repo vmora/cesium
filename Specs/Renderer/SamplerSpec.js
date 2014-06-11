@@ -1,10 +1,10 @@
 /*global defineSuite*/
 defineSuite([
-         'Specs/createContext',
-         'Specs/destroyContext'
-     ], 'Renderer/Sampler', function(
-         createContext,
-         destroyContext) {
+        'Specs/createContext',
+        'Specs/destroyContext'
+    ], 'Renderer/Sampler', function(
+        createContext,
+        destroyContext) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -23,7 +23,7 @@ defineSuite([
             context.createSampler({
                 wrapS : 'invalid wrap'
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws when creating a sampler with invalid wrapT', function() {
@@ -31,7 +31,7 @@ defineSuite([
             context.createSampler({
                 wrapT : 'invalid wrap'
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws when creating a sampler with invalid minificationFilter', function() {
@@ -39,7 +39,7 @@ defineSuite([
             context.createSampler({
                 minificationFilter : 'invalid filter'
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws when creating a sampler with invalid magnificationFilter', function() {
@@ -47,7 +47,7 @@ defineSuite([
             context.createSampler({
                 magnificationFilter : 'invalid filter'
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws when creating a sampler with invalid maximumAnisotropy', function() {
@@ -55,7 +55,7 @@ defineSuite([
             context.createSampler({
                 maximumAnisotropy : 0.0
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
 }, 'WebGL');

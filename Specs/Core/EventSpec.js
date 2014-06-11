@@ -1,8 +1,8 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/Event'
-     ], function(
-         Event) {
+        'Core/Event'
+    ], function(
+        Event) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -67,33 +67,54 @@ defineSuite([
         expect(scope2.timesCalled).toEqual(1);
 
         event.removeEventListener(Scope.prototype.myCallback, scope1);
-        expect(event.getNumberOfListeners()).toEqual(1);
+        expect(event.numberOfListeners).toEqual(1);
         event.raiseEvent();
 
         expect(scope1.timesCalled).toEqual(1);
         expect(scope2.timesCalled).toEqual(2);
 
         event.removeEventListener(Scope.prototype.myCallback, scope2);
-        expect(event.getNumberOfListeners()).toEqual(0);
+        expect(event.numberOfListeners).toEqual(0);
     });
 
-    it('getNumberOfListeners returns the correct number', function() {
+    it('numberOfListeners returns the correct number', function() {
         var callback1 = function() {
         };
 
         var callback2 = function() {
         };
 
-        expect(event.getNumberOfListeners()).toEqual(0);
+        expect(event.numberOfListeners).toEqual(0);
 
         event.addEventListener(callback1);
-        expect(event.getNumberOfListeners()).toEqual(1);
+        expect(event.numberOfListeners).toEqual(1);
 
         event.addEventListener(callback2);
-        expect(event.getNumberOfListeners()).toEqual(2);
+        expect(event.numberOfListeners).toEqual(2);
 
         event.removeEventListener(callback2);
-        expect(event.getNumberOfListeners()).toEqual(1);
+        expect(event.numberOfListeners).toEqual(1);
+    });
+
+    it('removeEventListener indicates if the listener is registered with the event', function() {
+        var callback = function() {
+        };
+
+        event.addEventListener(callback);
+        expect(event.numberOfListeners).toEqual(1);
+
+        expect(event.removeEventListener(callback)).toEqual(true);
+        expect(event.numberOfListeners).toEqual(0);
+
+        expect(event.removeEventListener(callback)).toEqual(false);
+    });
+
+    it('removeEventListener does not remove a registered listener of a different scope', function() {
+        var myFunc = function() {
+        };
+        var scope = {};
+        event.addEventListener(myFunc, scope);
+        expect(event.removeEventListener(myFunc)).toEqual(false);
     });
 
     it('works with no listeners', function() {
@@ -134,48 +155,30 @@ defineSuite([
     it('addEventListener throws with undefined listener', function() {
         expect(function() {
             event.addEventListener(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('addEventListener throws with null listener', function() {
         expect(function() {
             event.addEventListener(null);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('addEventListener throws with non-function listener', function() {
         expect(function() {
             event.addEventListener({});
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('removeEventListener throws with undefined listener', function() {
         expect(function() {
             event.removeEventListener(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('removeEventListener throws with null listener', function() {
         expect(function() {
             event.removeEventListener(null);
-        }).toThrow();
-    });
-
-    it('removeEventListener throws with non registered listener', function() {
-        expect(function() {
-            event.removeEventListener(function() {
-            });
-        }).toThrow();
-    });
-
-    it('removeEventListener throws with registered listener of a different scope', function() {
-        var myFunc = function() {
-        };
-        var scope = {};
-        event.addEventListener(myFunc, scope);
-
-        expect(function() {
-            event.removeEventListener(myFunc);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 });

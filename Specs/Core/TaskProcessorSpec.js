@@ -1,9 +1,11 @@
 /*global defineSuite*/
 defineSuite([
         'Core/TaskProcessor',
+        'require',
         'Specs/waitsForPromise'
     ], function(
         TaskProcessor,
+        require,
         waitsForPromise) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
@@ -12,10 +14,22 @@ defineSuite([
 
     beforeEach(function() {
         TaskProcessor._workerModulePrefix = '../Specs/TestWorkers/';
+
+        function absolutize(url) {
+            var a = document.createElement('a');
+            a.href = url;
+            a.href = a.href; // IE only absolutizes href on get, not set
+            return a.href;
+        }
+
+        TaskProcessor._loaderConfig = {
+            baseUrl : absolutize(require.toUrl('Specs/../Source'))
+        };
     });
 
     afterEach(function() {
         TaskProcessor._workerModulePrefix = TaskProcessor._defaultWorkerModulePrefix;
+        TaskProcessor._loaderConfig = undefined;
 
         if (taskProcessor && !taskProcessor.isDestroyed()) {
             taskProcessor = taskProcessor.destroy();
@@ -55,14 +69,18 @@ defineSuite([
         var parameters = new ArrayBuffer(byteLength);
         expect(parameters.byteLength).toEqual(byteLength);
 
-        var promise = taskProcessor.scheduleTask(parameters, [parameters]);
+        waitsForPromise(TaskProcessor._canTransferArrayBuffer).then(function(canTransferArrayBuffer) {
+            var promise = taskProcessor.scheduleTask(parameters, [parameters]);
 
-        // array buffer should be neutered when transferred
-        expect(parameters.byteLength).toEqual(0);
+            if (canTransferArrayBuffer) {
+                // array buffer should be neutered when transferred
+                expect(parameters.byteLength).toEqual(0);
+            }
 
-        // the worker should see the array with proper byte length
-        waitsForPromise(promise).then(function(result) {
-            expect(result).toEqual(byteLength);
+            // the worker should see the array with proper byte length
+            waitsForPromise(promise).then(function(result) {
+                expect(result).toEqual(byteLength);
+            });
         });
     });
 

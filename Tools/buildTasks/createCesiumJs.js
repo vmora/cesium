@@ -19,23 +19,27 @@ forEachFile('sourcefiles', function(relativePath, file) {
 
     var baseName = file.getName();
     var assignmentName = baseName.substring(0, baseName.lastIndexOf('.'));
-    assignmentName = String(assignmentName).replace(nonIdentifierRegexp, '_');
+    assignmentName = "['" + String(assignmentName) + "']";
     if (/Shaders\//.test(moduleId)) {
-        assignmentName = '_shaders.' + assignmentName;
+        assignmentName = '._shaders' + assignmentName;
     }
 
     var parameterName = String(moduleId).replace(nonIdentifierRegexp, '_');
 
     moduleIds.push("'./" + moduleId + "'");
     parameters.push(parameterName);
-    assignments.push('Cesium.' + assignmentName + ' = ' + parameterName + ';');
+    assignments.push('Cesium' + assignmentName + ' = ' + parameterName + ';');
 });
+
+var version = project.getProperty('version');
 
 var contents = '\
 /*global define*/\n\
 define([' + moduleIds.join(', ') + '], function(' + parameters.join(', ') + ') {\n\
   "use strict";\n\
+  /*jshint sub:true*/\n\
   var Cesium = {\n\
+    VERSION : "' + version + '",\n\
     _shaders : {}\n\
   };\n\
   ' + assignments.join('\n  ') + '\n\

@@ -1,24 +1,24 @@
 /*global defineSuite*/
 defineSuite([
-             'DynamicScene/DynamicLabel',
-             'Core/Cartesian2',
-             'Core/Cartesian3',
-             'Core/Color',
-             'Core/NearFarScalar',
-             'Scene/HorizontalOrigin',
-             'Scene/VerticalOrigin',
-             'Scene/LabelStyle',
-             'DynamicScene/ConstantProperty'
-         ], function(
-             DynamicLabel,
-             Cartesian2,
-             Cartesian3,
-             Color,
-             NearFarScalar,
-             HorizontalOrigin,
-             VerticalOrigin,
-             LabelStyle,
-             ConstantProperty) {
+        'DynamicScene/DynamicLabel',
+        'Core/Cartesian2',
+        'Core/Cartesian3',
+        'Core/Color',
+        'Core/NearFarScalar',
+        'DynamicScene/ConstantProperty',
+        'Scene/HorizontalOrigin',
+        'Scene/LabelStyle',
+        'Scene/VerticalOrigin'
+    ], function(
+        DynamicLabel,
+        Cartesian2,
+        Cartesian3,
+        Color,
+        NearFarScalar,
+        ConstantProperty,
+        HorizontalOrigin,
+        LabelStyle,
+        VerticalOrigin) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -37,6 +37,7 @@ defineSuite([
         source.scale = new ConstantProperty(1);
         source.show = new ConstantProperty(false);
         source.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        source.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
         var target = new DynamicLabel();
         target.merge(source);
@@ -54,6 +55,7 @@ defineSuite([
         expect(target.scale).toBe(source.scale);
         expect(target.show).toBe(source.show);
         expect(target.translucencyByDistance).toBe(source.translucencyByDistance);
+        expect(target.pixelOffsetScaleByDistance).toBe(source.pixelOffsetScaleByDistance);
     });
 
     it('merge does not assign assigned properties', function() {
@@ -71,6 +73,7 @@ defineSuite([
         source.scale = new ConstantProperty(1);
         source.show = new ConstantProperty(false);
         source.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        source.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
         var text = new ConstantProperty('my text');
         var font = new ConstantProperty('10px serif');
@@ -85,6 +88,7 @@ defineSuite([
         var scale = new ConstantProperty(2);
         var show = new ConstantProperty(true);
         var translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        var pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar());
 
         var target = new DynamicLabel();
         target.text = text;
@@ -100,6 +104,7 @@ defineSuite([
         target.scale = scale;
         target.show = show;
         target.translucencyByDistance = translucencyByDistance;
+        target.pixelOffsetScaleByDistance = pixelOffsetScaleByDistance;
 
         target.merge(source);
 
@@ -116,6 +121,7 @@ defineSuite([
         expect(target.scale).toBe(scale);
         expect(target.show).toBe(show);
         expect(target.translucencyByDistance).toBe(translucencyByDistance);
+        expect(target.pixelOffsetScaleByDistance).toBe(pixelOffsetScaleByDistance);
     });
 
     it('clone works', function() {
@@ -133,6 +139,7 @@ defineSuite([
         source.scale = new ConstantProperty(1);
         source.show = new ConstantProperty(false);
         source.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        source.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
         var result = source.clone();
         expect(result.text).toBe(source.text);
@@ -148,12 +155,13 @@ defineSuite([
         expect(result.scale).toBe(source.scale);
         expect(result.show).toBe(source.show);
         expect(result.translucencyByDistance).toBe(source.translucencyByDistance);
+        expect(result.pixelOffsetScaleByDistance).toBe(source.pixelOffsetScaleByDistance);
     });
 
     it('merge throws if source undefined', function() {
         var target = new DynamicLabel();
         expect(function() {
             target.merge(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 });
