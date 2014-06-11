@@ -838,7 +838,7 @@ define([
                 existingMaterial = new VideoMaterialProperty();
             }
             materialData = packetData.video;
-            processPacketData(HTMLVideoElement, existingMaterial, 'video', materialData.video, undefined, sourceUri);
+            processPacketData(HTMLVideoElement, existingMaterial, 'video', materialData.uri, undefined, sourceUri);
             processPacketData(JulianDate, existingMaterial, 'startTime', materialData.startTime, undefined, sourceUri);
             processPacketData(Boolean, existingMaterial, 'loop', materialData.loop, undefined, sourceUri);
             processPacketData(Number, existingMaterial, 'speed', materialData.speed, undefined, sourceUri);

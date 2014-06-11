@@ -39,9 +39,19 @@ define([
     var Texture = function(context, options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
+        var width = options.width;
+        var height = options.height;
         var source = options.source;
-        var width = defined(source) ? source.width : options.width;
-        var height = defined(source) ? source.height : options.height;
+
+        if (defined(source)) {
+            if (!defined(width)) {
+                width = defaultValue(source.videoWidth, source.width);
+            }
+            if (!defined(height)) {
+                height = defaultValue(source.videoHeight, source.height);
+            }
+        }
+
         var pixelFormat = defaultValue(options.pixelFormat, PixelFormat.RGBA);
         var pixelDatatype = defaultValue(options.pixelDatatype, PixelDatatype.UNSIGNED_BYTE);
 

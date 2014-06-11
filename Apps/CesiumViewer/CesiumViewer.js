@@ -5,6 +5,7 @@ define([
         'Core/getFilenameFromUri',
         'DynamicScene/CzmlDataSource',
         'DynamicScene/GeoJsonDataSource',
+        'DynamicScene/VideoMaterialProperty',
         'Scene/TileMapServiceImageryProvider',
         'Widgets/Viewer/Viewer',
         'Widgets/Viewer/viewerCesiumInspectorMixin',
@@ -17,6 +18,7 @@ define([
         getFilenameFromUri,
         CzmlDataSource,
         GeoJsonDataSource,
+        VideoMaterialProperty,
         TileMapServiceImageryProvider,
         Viewer,
         viewerCesiumInspectorMixin,
@@ -70,6 +72,7 @@ define([
         }
         return;
     }
+    VideoMaterialProperty.context = viewer.scene._context;
 
     viewer.extend(viewerDragDropMixin);
     viewer.extend(viewerDynamicObjectMixin);

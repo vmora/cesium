@@ -2,20 +2,26 @@
 define(['../Core/Iso8601',
         '../Core/Cartesian2',
         '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/Event',
         './ConstantProperty',
+        './createDynamicPropertyDescriptor',
         './Property'
     ], function(
         Iso8601,
         Cartesian2,
         defined,
+        defineProperties,
+        Event,
         ConstantProperty,
+        createDynamicPropertyDescriptor,
         Property) {
     "use strict";
 
     function createSeekFunction(that, context, video, result) {
         return function() {
             if (!defined(that._texture)) {
-                that._texture = context.createTexture2D({
+                that._texture = VideoMaterialProperty.context.createTexture2D({
                     source : video
                 });
                 result.image = that._texture;
@@ -27,9 +33,9 @@ define(['../Core/Iso8601',
             //before setting the currentTime, but if there are no seekable
             //segments, then this code will have no affect, so the net result
             //seems to be the same.
-            var videoTime = that._startTime.getSecondsDifference(that._time);
-            videoTime = videoTime * that._speed;
-            if (that._loop) {
+            var videoTime = that._cachedStartTime.getSecondsDifference(that._time);
+            videoTime = videoTime * that._cachedSpeed;
+            if (that._cachedLoop) {
                 videoTime = videoTime % duration;
                 if (videoTime < 0.0) {
                     videoTime = duration - videoTime;
@@ -51,49 +57,96 @@ define(['../Core/Iso8601',
      * @constructor
      */
     var VideoMaterialProperty = function() {
-        /**
-         * A string {@link Property} which is the url of the desired video.
-         * @type {Property}
-         */
-        this.video = undefined;
+        this._definitionChanged = new Event();
 
-        /**
-         * A {@link Cartesian2} {@link Property} which determines the number of times the video repeats in each direction.
-         * @type {Property}
-         * @default new ConstantProperty(new Cartesian2(1, 1))
-         */
+        this._video = undefined;
+        this._videoSubscription = undefined;
+
+        this._repeat = undefined;
+        this._repeatSubscription = undefined;
+
+        this._startTime = undefined;
+        this._startTimeSubscription = undefined;
+
+        this._loop = undefined;
+        this._loopSubscription = undefined;
+
+        this._speed = undefined;
+        this._speedSubscription = undefined;
+
         this.repeat = new ConstantProperty(new Cartesian2(1, 1));
-
-        /**
-         * A {@link JulianDate} {@link Property} which determines the simulation start time of the video.
-         * @type {Property}
-         * @default new ConstantProperty(new Cartesian2(1, 1))
-         */
         this.startTime = new ConstantProperty(Iso8601.MINIMUM_VALUE);
-
-        /**
-         * A Boolean {@link Property} which determines whether or not the video should loop;
-         * @type {Property}
-         * @default new ConstantProperty(true)
-         */
         this.loop = new ConstantProperty(true);
-
-        /**
-         * A Number {@link Property} which determines the playback rate of the video.
-         * @type {Property}
-         * @default new ConstantProperty(true)
-         */
         this.speed = new ConstantProperty(1.0);
 
-        this._time = undefined;
-        this._speed = undefined;
-        this._loop = undefined;
-        this._startTime = undefined;
         this._videoUrl = undefined;
         this._videoElement = undefined;
         this._seekFunction = undefined;
         this._texture = undefined;
     };
+
+    defineProperties(VideoMaterialProperty.prototype, {
+        /**
+         * Gets a value indicating if this property is constant.  A property is considered
+         * constant if getValue always returns the same result for the current definition.
+         * @memberof StripeMaterialProperty.prototype
+         *
+         * @type {Boolean}
+         * @readonly
+         */
+        isConstant : {
+            get : function() {
+                return Property.isConstant(this._video) && //
+                       Property.isConstant(this._repeat) && //
+                       Property.isConstant(this._startTime) && //
+                       Property.isConstant(this._loop) && //
+                       Property.isConstant(this._speed);
+            }
+        },
+        /**
+         * Gets the event that is raised whenever the definition of this property changes.
+         * The definition is considered to have changed if a call to getValue would return
+         * a different result for the same time.
+         * @memberof StripeMaterialProperty.prototype
+         *
+         * @type {Event}
+         * @readonly
+         */
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+        /**
+         * A string {@link Property} which is the url of the desired video.
+         * @type {Property}
+         */
+        video : createDynamicPropertyDescriptor('video'),
+        /**
+         * A {@link Cartesian2} {@link Property} which determines the number of times the video repeats in each direction.
+         * @type {Property}
+         * @default new ConstantProperty(new Cartesian2(1, 1))
+         */
+        repeat : createDynamicPropertyDescriptor('repeat'),
+        /**
+         * A {@link JulianDate} {@link Property} which determines the simulation start time of the video.
+         * @type {Property}
+         * @default new ConstantProperty(new Cartesian2(1, 1))
+         */
+        startTime : createDynamicPropertyDescriptor('startTime'),
+        /**
+         * A Boolean {@link Property} which determines whether or not the video should loop;
+         * @type {Property}
+         * @default new ConstantProperty(true)
+         */
+        loop : createDynamicPropertyDescriptor('loop'),
+        /**
+         * A Number {@link Property} which determines the playback rate of the video.
+         * @type {Property}
+         * @default new ConstantProperty(true)
+         */
+        speed : createDynamicPropertyDescriptor('speed')
+    });
 
     /**
      * Gets the {@link Material} type at the provided time.
@@ -123,9 +176,9 @@ define(['../Core/Iso8601',
 
         result.repeat = defined(this.repeat) ? this.repeat.getValue(time, result.repeat) : undefined;
         this._time = time;
-        this._speed = defined(this.speed) ? this.speed.getValue(time) : 1;
-        this._loop = defined(this.loop) ? this.loop.getValue(time) : true;
-        this._startTime = defined(this.startTime) ? this.startTime.getValue(time) : Iso8601.MINIMUM_VALUE;
+        this._cachedSpeed = defined(this.speed) ? this.speed.getValue(time) : 1;
+        this._cachedLoop = defined(this.loop) ? this.loop.getValue(time) : true;
+        this._cachedStartTime = defined(this.startTime) ? this.startTime.getValue(time) : Iso8601.MINIMUM_VALUE;
 
         var videoProperty = this.video;
         if (defined(videoProperty)) {
