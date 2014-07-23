@@ -487,7 +487,7 @@ define([
         }
 
         var cameraCartesianPosition = frameState.camera.positionWC;
-        var cameraCartographicPosition = frameState.camera.positionCartographic;
+        var cameraCartographicPosition = frameState.camera._projection.ellipsoid.cartesianToCartographic(cameraCartesianPosition);
 
         var vectorFromSouthwestCorner = Cartesian3.subtract(cameraCartesianPosition, southwestCornerCartesian, vectorScratch);
         var distanceToWestPlane = Cartesian3.dot(vectorFromSouthwestCorner, westNormal);

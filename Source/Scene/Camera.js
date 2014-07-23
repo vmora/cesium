@@ -95,15 +95,10 @@ define([
         this._actualTransform = Matrix4.clone(Matrix4.IDENTITY);
         this._actualInvTransform = Matrix4.clone(Matrix4.IDENTITY);
 
-        /**
-         * The position of the camera.
-         *
-         * @type {Cartesian3}
-         */
-        this.position = new Cartesian3();
         this._position = new Cartesian3();
+        this._positionChanged = false;
+        this._actualPosition = new Cartesian3();
         this._positionWC = new Cartesian3();
-        this._positionCartographic = new Cartographic();
 
         /**
          * The view direction of the camera.
@@ -112,6 +107,7 @@ define([
          */
         this.direction = new Cartesian3();
         this._direction = new Cartesian3();
+        this._actualDirection = new Cartesian3();
         this._directionWC = new Cartesian3();
 
         /**
@@ -121,6 +117,7 @@ define([
          */
         this.up = new Cartesian3();
         this._up = new Cartesian3();
+        this._actualUp = new Cartesian3();
         this._upWC = new Cartesian3();
 
         /**
@@ -130,6 +127,7 @@ define([
          */
         this.right = new Cartesian3();
         this._right = new Cartesian3();
+        this._actualRight = new Cartesian3();
         this._rightWC = new Cartesian3();
 
         /**
@@ -244,10 +242,10 @@ define([
     Camera.DEFAULT_VIEW_FACTOR = 0.5;
 
     function updateViewMatrix(camera) {
-        var r = camera._right;
-        var u = camera._up;
-        var d = camera._direction;
-        var e = camera._position;
+        var r = camera._actualRight;
+        var u = camera._actualUp;
+        var d = camera._actualDirection;
+        var e = camera._actualPosition;
 
         var viewMatrix = camera._viewMatrix;
         viewMatrix[0] = r.x;
@@ -394,31 +392,144 @@ define([
         Matrix4.setColumn(camera._actualTransform, 3, newOrigin, camera._actualTransform);
     }
 
+    function convertPositionForColumbusView(camera) {
+        var projection = camera._projection;
+        var ellipsoid = projection.ellipsoid;
+
+        var position = camera._position;
+        var cartographic = ellipsoid.cartesianToCartographic(position, scratchCartographic);
+
+        var projectedPosition = projection.project(cartographic, scratchCartesian3Projection);
+        var newPosition = new Cartesian3();
+        newPosition.x = projectedPosition.z;
+        newPosition.y = projectedPosition.x;
+        newPosition.z = projectedPosition.y;
+
+        var right = Cartesian3.add(camera._right, position, scratchCartesian3);
+        ellipsoid.cartesianToCartographic(right, cartographic);
+
+        projection.project(cartographic, projectedPosition);
+        var newRight = new Cartesian3();
+        newRight.x = projectedPosition.z;
+        newRight.y = projectedPosition.x;
+        newRight.z = projectedPosition.y;
+
+        newRight = Cartesian3.subtract(newRight, newPosition, newRight);
+
+        var up = Cartesian3.add(camera._up, position, new Cartesian3());
+        ellipsoid.cartesianToCartographic(up, cartographic);
+
+        projection.project(cartographic, projectedPosition);
+        var newUp = new Cartesian3();
+        newUp.x = projectedPosition.z;
+        newUp.y = projectedPosition.x;
+        newUp.z = projectedPosition.y;
+
+        newUp = Cartesian3.subtract(newUp, newPosition, newUp);
+
+        var newDirection = new Cartesian3();
+        Cartesian3.cross(newRight, newUp, newDirection);
+        Cartesian3.normalize(newDirection, newDirection);
+        Cartesian3.cross(newUp, newDirection, newRight);
+        Cartesian3.normalize(newRight, newRight);
+        Cartesian3.cross(newDirection, newRight, newUp);
+        Cartesian3.normalize(newUp, newUp);
+
+        camera._actualPosition = newPosition;
+        camera._actualRight = newRight;
+        camera._actualDirection = newDirection;
+        camera._actualUp = newUp;
+    }
+
+    function convertPositionFor2D(camera) {
+        var projection = camera._projection;
+        var ellipsoid = projection.ellipsoid;
+
+        var position = camera._position;
+        var cartographic = ellipsoid.cartesianToCartographic(position, scratchCartographic);
+
+        var projectedPosition = projection.project(cartographic, new Cartesian3());
+        var newPosition = new Cartesian3();
+        newPosition.x = projectedPosition.z;
+        newPosition.y = projectedPosition.x;
+        newPosition.z = projectedPosition.y;
+
+        var newDirection = Cartesian3.clone(Cartesian3.UNIT_X, new Cartesian3());
+
+        var right = Cartesian4.add(camera._right, position, new Cartesian3());
+        ellipsoid.cartesianToCartographic(right, cartographic);
+
+        projection.project(cartographic, projectedPosition);
+        var newRight = new Cartesian3();
+        newRight.x = projectedPosition.z;
+        newRight.y = projectedPosition.x;
+        newRight.z = projectedPosition.y;
+
+        Cartesian3.subtract(newRight, newPosition, newRight);
+        newRight.x = 0.0;
+
+        var newUp = new Cartesian3();
+        if (Cartesian3.magnitudeSquared(newRight) > CesiumMath.EPSILON10) {
+            Cartesian3.cross(newDirection, newRight, newUp);
+        } else {
+            var up = Cartesian4.add(camera._up, position, new Cartesian3());
+            ellipsoid.cartesianToCartographic(up, cartographic);
+
+            projection.project(cartographic, projectedPosition);
+            newUp.x = projectedPosition.z;
+            newUp.y = projectedPosition.x;
+            newUp.z = projectedPosition.y;
+
+            Cartesian3.subtract(newUp, newPosition, newUp);
+            newUp.x = 0.0;
+
+            if (Cartesian3.magnitudeSquared(newUp) < CesiumMath.EPSILON10) {
+                Cartesian4.clone(Cartesian4.UNIT_Y, newRight);
+                Cartesian4.clone(Cartesian4.UNIT_Z, newUp);
+            }
+        }
+
+        Cartesian3.cross(newUp, newDirection, newRight);
+        Cartesian3.normalize(newRight, newRight);
+        Cartesian3.cross(newDirection, newRight, newUp);
+        Cartesian3.normalize(newUp, newUp);
+
+        camera._actualPosition = newPosition;
+        camera._actualRight = newRight;
+        camera._actualDirection = newDirection;
+        camera._actualUp = newUp;
+    }
+
     var scratchCartesian = new Cartesian3();
 
     function updateMembers(camera) {
+        var mode = camera._mode;
+        var transform = camera._transform;
+        var transformEqualsIdentity = transform.equals(Matrix4.IDENTITY);
         var position = camera._position;
-        var positionChanged = !Cartesian3.equals(position, camera.position);
-        if (positionChanged) {
-            position = Cartesian3.clone(camera.position, camera._position);
-        }
-
         var direction = camera._direction;
-        var directionChanged = !Cartesian3.equals(direction, camera.direction);
-        if (directionChanged) {
-            direction = Cartesian3.clone(camera.direction, camera._direction);
-        }
-
         var up = camera._up;
-        var upChanged = !Cartesian3.equals(up, camera.up);
-        if (upChanged) {
-            up = Cartesian3.clone(camera.up, camera._up);
-        }
-
         var right = camera._right;
         var rightChanged = !Cartesian3.equals(right, camera.right);
-        if (rightChanged) {
+        var upChanged = !Cartesian3.equals(up, camera.up);
+        var directionChanged = !Cartesian3.equals(direction, camera.direction);
+        var positionChanged = camera._positionChanged;
+
+        if (positionChanged | directionChanged | upChanged | rightChanged) {
+            direction = Cartesian3.clone(camera.direction, camera._direction);
+            up = Cartesian3.clone(camera.up, camera._up);
             right = Cartesian3.clone(camera.right, camera._right);
+            positionChanged = false;
+
+            if (!transformEqualsIdentity) {
+                Cartesian3.clone(position, camera._actualPosition);
+            } else if (mode === SceneMode.COLUMBUS_VIEW) {
+                convertPositionForColumbusView(camera);
+            } else if (mode === SceneMode.SCENE2D) {
+                convertPositionFor2D(camera);
+            } else {
+                Cartesian3.clone(position, camera._actualPosition);
+            }
         }
 
         var transformChanged = !Matrix4.equals(camera._transform, camera.transform) || camera._modeChanged;
@@ -443,32 +554,10 @@ define([
             camera._modeChanged = false;
         }
 
-        var transform = camera._actualTransform;
+        transform = camera._transform;
 
         if (positionChanged || transformChanged) {
             camera._positionWC = Matrix4.multiplyByPoint(transform, position, camera._positionWC);
-
-            // Compute the Cartographic position of the camera.
-            var mode = camera._mode;
-            if (mode === SceneMode.SCENE3D || mode === SceneMode.MORPHING) {
-                camera._positionCartographic = camera._projection.ellipsoid.cartesianToCartographic(camera._positionWC, camera._positionCartographic);
-            } else {
-                // The camera position is expressed in the 2D coordinate system where the Y axis is to the East,
-                // the Z axis is to the North, and the X axis is out of the map.  Express them instead in the ENU axes where
-                // X is to the East, Y is to the North, and Z is out of the local horizontal plane.
-                var positionENU = scratchCartesian;
-                positionENU.x = camera._positionWC.y;
-                positionENU.y = camera._positionWC.z;
-                positionENU.z = camera._positionWC.x;
-
-                // In 2D, the camera height is always 12.7 million meters.
-                // The apparent height is equal to half the frustum width.
-                if (mode === SceneMode.SCENE2D) {
-                    positionENU.z = (camera.frustum.right - camera.frustum.left) * 0.5;
-                }
-
-                camera._projection.unproject(positionENU, camera._positionCartographic);
-            }
         }
 
         if (directionChanged || upChanged || rightChanged) {
@@ -603,18 +692,22 @@ define([
         },
 
         /**
-         * Gets the {@link Cartographic} position of the camera, with longitude and latitude
-         * expressed in radians and height in meters.  In 2D and Columbus View, it is possible
-         * for the returned longitude and latitude to be outside the range of valid longitudes
-         * and latitudes when the camera is outside the map.
+         * Gets and sets the position.
          * @memberof Camera.prototype
          *
-         * @type {Cartographic}
+         * @type {Cartesian3|Cartographic}
          */
-        positionCartographic : {
+        position : {
             get : function() {
-                updateMembers(this);
-                return this._positionCartographic;
+                return this._position;
+            },
+            set : function(pos) {
+                if (defined(pos.lat) && defined(pos.lon)) {
+                    this._scene.camera._projection.ellipsoid.cartographicToCartesian(pos, this._position);
+                } else {
+                    this._position = pos;
+                }
+                this._positionChanged = true;
             }
         },
 
@@ -1367,66 +1460,6 @@ define([
             return Math.abs(this.position.z);
         } else if (this._mode === SceneMode.SCENE2D) {
             return  Math.max(this.frustum.right - this.frustum.left, this.frustum.top - this.frustum.bottom);
-        }
-    };
-
-    function setPositionCartographic2D(camera, cartographic) {
-        var newLeft = -cartographic.height * 0.5;
-        var newRight = -newLeft;
-
-        var frustum = camera.frustum;
-        if (newRight > newLeft) {
-            var ratio = frustum.top / frustum.right;
-            frustum.right = newRight;
-            frustum.left = newLeft;
-            frustum.top = frustum.right * ratio;
-            frustum.bottom = -frustum.top;
-        }
-
-        //We use Cartesian2 instead of 3 here because Z must be constant in 2D mode.
-        Cartesian2.clone(camera._projection.project(cartographic), camera.position);
-        Cartesian3.negate(Cartesian3.UNIT_Z, camera.direction);
-        Cartesian3.clone(Cartesian3.UNIT_Y, camera.up);
-        Cartesian3.clone(Cartesian3.UNIT_X, camera.right);
-    }
-
-    function setPositionCartographicCV(camera, cartographic) {
-        var projection = camera._projection;
-        camera.position = projection.project(cartographic);
-        Cartesian3.negate(Cartesian3.UNIT_Z, camera.direction);
-        Cartesian3.clone(Cartesian3.UNIT_Y, camera.up);
-        Cartesian3.clone(Cartesian3.UNIT_X, camera.right);
-    }
-
-    function setPositionCartographic3D(camera, cartographic) {
-        var ellipsoid = camera._projection.ellipsoid;
-
-        ellipsoid.cartographicToCartesian(cartographic, camera.position);
-        Cartesian3.negate(camera.position, camera.direction);
-        Cartesian3.normalize(camera.direction, camera.direction);
-        Cartesian3.cross(camera.direction, Cartesian3.UNIT_Z, camera.right);
-        Cartesian3.cross(camera.right, camera.direction, camera.up);
-        Cartesian3.cross(camera.direction, camera.up, camera.right);
-    }
-
-    /**
-     * Moves the camera to the provided cartographic position.
-     *
-     * @param {Cartographic} cartographic The new camera position.
-     */
-    Camera.prototype.setPositionCartographic = function(cartographic) {
-        //>>includeStart('debug', pragmas.debug);
-        if (!defined(cartographic)) {
-            throw new DeveloperError('cartographic is required.');
-        }
-        //>>includeEnd('debug');
-
-        if (this._mode === SceneMode.SCENE2D) {
-            setPositionCartographic2D(this, cartographic);
-        } else if (this._mode === SceneMode.COLUMBUS_VIEW) {
-            setPositionCartographicCV(this, cartographic);
-        } else if (this._mode === SceneMode.SCENE3D) {
-            setPositionCartographic3D(this, cartographic);
         }
     };
 
