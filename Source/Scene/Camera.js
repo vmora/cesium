@@ -207,10 +207,11 @@ define([
         // set default view
         this.viewRectangle(Camera.DEFAULT_VIEW_RECTANGLE);
 
-        var mag = Cartesian3.magnitude(this.position);
+        var mag = Cartesian3.magnitude(this._position);
         mag += mag * Camera.DEFAULT_VIEW_FACTOR;
-        Cartesian3.normalize(this.position, this.position);
-        Cartesian3.multiplyByScalar(this.position, mag, this.position);
+        Cartesian3.normalize(this._position, this._position);
+        Cartesian3.multiplyByScalar(this._position, mag, this._position);
+        this._positionChanged = true;
     };
 
     /**
@@ -405,7 +406,7 @@ define([
         newPosition.y = projectedPosition.x;
         newPosition.z = projectedPosition.y;
 
-        var right = Cartesian3.add(camera._right, position, scratchCartesian3);
+        var right = Cartesian3.add(camera._right, position, new Cartesian3());
         ellipsoid.cartesianToCartographic(right, cartographic);
 
         projection.project(cartographic, projectedPosition);
@@ -505,7 +506,6 @@ define([
     function updateMembers(camera) {
         var mode = camera._mode;
         var transform = camera._transform;
-        var transformEqualsIdentity = transform.equals(Matrix4.IDENTITY);
         var position = camera._position;
         var direction = camera._direction;
         var up = camera._up;
@@ -515,20 +515,28 @@ define([
         var directionChanged = !Cartesian3.equals(direction, camera.direction);
         var positionChanged = camera._positionChanged;
 
-        if (positionChanged | directionChanged | upChanged | rightChanged) {
+        if (positionChanged || directionChanged || upChanged || rightChanged) {
             direction = Cartesian3.clone(camera.direction, camera._direction);
             up = Cartesian3.clone(camera.up, camera._up);
             right = Cartesian3.clone(camera.right, camera._right);
-            positionChanged = false;
+            camera._positionChanged = false;
 
-            if (!transformEqualsIdentity) {
-                Cartesian3.clone(position, camera._actualPosition);
-            } else if (mode === SceneMode.COLUMBUS_VIEW) {
-                convertPositionForColumbusView(camera);
-            } else if (mode === SceneMode.SCENE2D) {
-                convertPositionFor2D(camera);
+            if (mode === SceneMode.COLUMBUS_VIEW || mode === SceneMode.SCENE2D) {
+                if (Matrix4.equals(Matrix4.IDENTITY, transform)) {
+                    Cartesian3.clone(position, camera._actualPosition);
+                    Cartesian3.clone(direction, camera._actualDirection);
+                    Cartesian3.clone(up, camera._actualUp);
+                    Cartesian3.clone(right, camera._actualRight);
+                } else if (mode === SceneMode.COLUMBUS_VIEW) {
+                    convertPositionForColumbusView(camera);
+                } else {
+                    convertPositionFor2D(camera);
+                }
             } else {
                 Cartesian3.clone(position, camera._actualPosition);
+                Cartesian3.clone(direction, camera._actualDirection);
+                Cartesian3.clone(up, camera._actualUp);
+                Cartesian3.clone(right, camera._actualRight);
             }
         }
 
@@ -537,10 +545,10 @@ define([
             Matrix4.clone(camera.transform, camera._transform);
             Matrix4.inverseTransformation(camera._transform, camera._invTransform);
 
-            if (camera._mode === SceneMode.COLUMBUS_VIEW || camera._mode === SceneMode.SCENE2D) {
-                if (Matrix4.equals(Matrix4.IDENTITY, camera._transform)) {
+            if (mode === SceneMode.COLUMBUS_VIEW || mode === SceneMode.SCENE2D) {
+                if (Matrix4.equals(Matrix4.IDENTITY, transform)) {
                     Matrix4.clone(Camera.TRANSFORM_2D, camera._actualTransform);
-                } else if (camera._mode === SceneMode.COLUMBUS_VIEW) {
+                } else if (mode === SceneMode.COLUMBUS_VIEW) {
                     convertTransformForColumbusView(camera);
                 } else {
                     convertTransformFor2D(camera);
@@ -554,28 +562,14 @@ define([
             camera._modeChanged = false;
         }
 
-        transform = camera._transform;
+        transform = camera._actualTransform;
+        position = camera._actualPosition;
+        up = camera._actualUp;
+        direction = camera._actualDirection;
+        right = camera._actualRight;
 
         if (positionChanged || transformChanged) {
             camera._positionWC = Matrix4.multiplyByPoint(transform, position, camera._positionWC);
-        }
-
-        if (directionChanged || upChanged || rightChanged) {
-            var det = Cartesian3.dot(direction, Cartesian3.cross(up, right, scratchCartesian));
-            if (Math.abs(1.0 - det) > CesiumMath.EPSILON2) {
-                //orthonormalize axes
-                direction = Cartesian3.normalize(direction, camera._direction);
-                Cartesian3.clone(direction, camera.direction);
-
-                var invUpMag = 1.0 / Cartesian3.magnitudeSquared(up);
-                var scalar = Cartesian3.dot(up, direction) * invUpMag;
-                var w0 = Cartesian3.multiplyByScalar(direction, scalar, scratchCartesian);
-                up = Cartesian3.normalize(Cartesian3.subtract(up, w0, camera._up), camera._up);
-                Cartesian3.clone(up, camera.up);
-
-                right = Cartesian3.cross(direction, up, camera._right);
-                Cartesian3.clone(right, camera.right);
-            }
         }
 
         if (directionChanged || transformChanged) {
@@ -699,6 +693,7 @@ define([
          */
         position : {
             get : function() {
+                updateMembers(this);
                 return this._position;
             },
             set : function(pos) {
