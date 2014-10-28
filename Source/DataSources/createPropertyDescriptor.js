@@ -6,14 +6,18 @@ define([
         defaultValue,
         defined) {
     "use strict";
-
-    function createProperty(name, privateName, subscriptionName, configurable) {
-        return {
-            configurable : configurable,
-            get : function() {
-                return this[privateName];
-            },
-            set : function(value) {
+	function createGetter(name, privateName, subscriptionName){
+		return function() {
+					console.log('get:' + privateName);
+					console.log('get:' + subscriptionName);
+	                return this[privateName];
+	            };
+			}
+			
+			function createSetter(name, privateName, subscriptionName){
+				return function(value) {
+				console.log('set:' + privateName);
+				console.log('set:' + subscriptionName);
                 var oldValue = this[privateName];
                 var subscription = this[subscriptionName];
                 if (defined(subscription)) {
@@ -29,7 +33,19 @@ define([
                         this._definitionChanged.raiseEvent(this, name, value, value);
                     }, this);
                 }
-            }
+            };
+			}
+				
+    function createProperty(name, privateName1, subscriptionName1, configurable) {
+		var privateName = privateName1;
+		var subscriptionName = subscriptionName1;
+		console.log('Dec:' + privateName);
+		console.log('Dec:' + subscriptionName);
+       
+	    return {
+            configurable : configurable,
+            get : createGetter(name, privateName1, subscriptionName1),
+            set : createSetter(name, privateName1, subscriptionName1)
         };
     }
 
