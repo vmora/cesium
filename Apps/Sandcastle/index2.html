@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
 <title>Cesium Sandcastle</title>
 <link rel="stylesheet" href="../../ThirdParty/codemirror-4.6/lib/codemirror.css">
@@ -30,6 +30,59 @@
 .navbar-brand {
     padding: 10px;
 }
+
+.navbar-btn {
+    margin-left: 3px;
+    margin-right: 3px;
+}
+
+body {
+    margin-top: 56px;
+}
+
+.gallery-pane {
+    position: absolute;
+    top: 42px;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+}
+
+.footer {
+    position: fixed;
+    height: 200px;
+    bottom: 0;
+    width: 100%;
+}
+
+.fullFrame {
+    border: none;
+    width: 100%;
+    height: 100%;
+    -moz-transition-property: -moz-transform;
+    -moz-transition-duration: 0.5s;
+    -moz-transform-origin: 200px 150px;
+    -webkit-transition-property: -webkit-transform;
+    -webkit-transition-duration: 0.5s;
+    -webkit-transform-origin: 200px 150px;
+    transition-property: transform;
+    transition-duration: 0.5s;
+    transform-origin: 200px 150px;
+}
+
+.logo {
+    height: 100%;
+}
+
+.demoTileThumbnail {
+    max-height: 150px;
+    max-width: 225px;
+    height: 100px;
+    width: auto;
+}
 </style>
 
 <meta property="og:title" content="Cesium Sandcastle" />
@@ -41,89 +94,128 @@
 <meta property="fb:admins" content="1222088662,1322006496" />
 </head>
 <body>
-  <nav class="navbar navbar-default" role="navigation">
     <div class="container-fluid">
-      <!-- Brand and toggle get grouped for better mobile display -->
-      <div class="navbar-header">
-        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-          <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span
-            class="icon-bar"></span>
-        </button>
-        <a class="navbar-brand" href="http://cesiumjs.org/" target="_blank"><img src="./images/Cesium_Logo_Color_Overlay.png"
-          style="height: 100%" /></a>
-      </div>
-
-      <!-- Collect the nav links, forms, and other content for toggling -->
-      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-        <ul class="nav navbar-nav">
-          <li><a href="#">Run (F8)</a></li>
-          <li><a href="#" class="visible-lg">Suggest (Ctrl-Space)</a></li>
-          <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Info <span class="caret"></span></a>
-            <form class="dropdown-menu">
-              <div class="panel panel-default">
-                <div class="panel-body">
-                  <div>
-                    Description:<br />
-                    <textarea id="description"></textarea>
-                  </div>
-                  <br />
-                  <div>
-                    Labels:<br />
-                    <textarea id="label"></textarea>
-                  </div>
+        <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <header>
+                <!-- Brand and toggle get grouped for better mobile display -->
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                        <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="http://cesiumjs.org/" target="_blank"><img class="logo" src="./images/Cesium_Logo_Color_Overlay.png" /></a>
                 </div>
-              </div>
-            </form></li>
-          <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Save As <span class="caret"></span></a>
-            <form class="dropdown-menu">
-              <div class="panel panel-default">
-                <div class="panel-body">
-                  <p>
-                    You must save the file to this folder:
-                    <code>Apps/Sandcastle/gallery/*.html</code>
-                  </p>
-                  <p>
-                    Some browsers require you to manually rename the saved file to a
-                    <code>*.html</code>
-                    file.
-                  </p>
-                  <button type="button" class="btn btn-default">Save *.html file</button>
-                </div>
-              </div>
-            </form></li>
-          <li><a href="#">Open In New Window</a></li>
-          <li><a href="#">View as Thumbnail</a></li>
-        </ul>
-        <ul class="nav navbar-nav navbar-right">
-        </ul>
-      </div>
-      <!-- /.navbar-collapse -->
-    </div>
-    <!-- /.container-fluid -->
-  </nav>
-  <!-- Nav tabs -->
-  <ul class="nav nav-tabs" role="tablist">
-    <li class="active"><a href="#gallery" role="tab" data-toggle="tab">Gallery</a></li>
-    <li><a href="#console" role="tab" data-toggle="tab">Console</a></li>
-  </ul>
 
-  <div class="tab-content">
-    <div class="tab-pane active" id="gallery">
-      <div class="container">
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                    <ul class="nav navbar-nav">
+                        <li><button type="button" class="btn btn-sm btn-primary navbar-btn">
+                                <span class="glyphicon glyphicon-cog"></span> Run (F8)
+                            </button></li>
+                        <li><button type="button" class="btn btn-sm btn-primary navbar-btn">
+                                <span class="glyphicon glyphicon-pencil"></span> Suggest (Ctrl-Space)
+                            </button></li>
+                        <li class="dropdown"><button type="button" class="btn btn-sm btn-primary navbar-btn dropdown-toggle" data-toggle="dropdown">
+                                Info <span class="caret"></span>
+                            </button>
+                            <form class="dropdown-menu">
+                                <div class="panel panel-default">
+                                    <div class="panel-body">
+                                        <div>
+                                            Description:<br />
+                                            <textarea id="description"></textarea>
+                                        </div>
+                                        <br />
+                                        <div>
+                                            Labels:<br />
+                                            <textarea id="label"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form></li>
+                        <li class="dropdown"><button type="button" class="btn btn-sm btn-primary navbar-btn dropdown-toggle" data-toggle="dropdown">
+                                Save As <span class="caret"></span>
+                            </button>
+                            <form class="dropdown-menu">
+                                <div class="panel panel-default">
+                                    <div class="panel-body">
+                                        <p>
+                                            You must save the file to this folder:
+                                            <code>Apps/Sandcastle/gallery/*.html</code>
+                                        </p>
+                                        <p>
+                                            Some browsers require you to manually rename the saved file to a
+                                            <code>*.html</code>
+                                            file.
+                                        </p>
+                                        <button type="button" class="btn btn-primary">Save *.html file</button>
+                                    </div>
+                                </div>
+                            </form></li>
+                        <li><button type="button" class="btn btn-sm btn-primary navbar-btn">Open In New Window</button></li>
+                        <li><button type="button" class="btn btn-sm btn-primary navbar-btn">View as Thumbnail</button></li>
+                    </ul>
+                </div>
+            </header>
+        </nav>
+
         <div class="row">
-          <form role="search">
-            <div class="form-group">
-              <input type="text" class="form-control" placeholder="Filter">
+            <div class="col-xs-6">
+                <!-- Code tabs -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="active"><a href="#codeTab" role="tab" data-toggle="tab">JavaScript code</a></li>
+                    <li><a href="#htmlTab" role="tab" data-toggle="tab">HTML body &amp; CSS</a></li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane active" id="codeTab">
+                        <textarea id="code" class="fullFrame">// Select a demo from the gallery to load.</textarea>
+                    </div>
+                    <div class="tab-pane" id="htmlTab">
+                        <textarea id="htmlBody" class="fullFrame">&lt;!--Select a demo from the gallery to load.--&gt;</textarea>
+                    </div>
+                </div>
             </div>
-          </form>
+
+            <div class="col-xs-6">
+                <!-- Cesium tabs -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="active"><a href="#cesiumTab" role="tab" data-toggle="tab">Cesium</a></li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane active" id="cesiumTab">
+                        <iframe id="bucketFrame" src="templates/bucket.html" class="fullFrame" allowfullscreen mozallowfullscreen webkitallowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <div class="footer">
+            <!-- Bottom tabs -->
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="active"><a href="#gallery" role="tab" data-toggle="tab">Gallery</a></li>
+                <li><a href="#console" role="tab" data-toggle="tab">Console</a></li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="gallery-pane tab-pane active" id="gallery">
+                    <ul class="list-inline" data-bind="foreach: galleryItems">
+                        <li>
+                            <div class="thumbnail">
+                                <img class="img-rounded" style="height: 90px;" data-bind="attr:{src: 'gallery/' + img}" />
+                                <div class="caption" data-bind="text: name"></div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="tab-pane" id="console">
+                    <div class="logContainer">
+                        <div id="logOutput"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="tab-pane" id="console">
-      <div class="logContainer">
-        <div id="logOutput"></div>
-      </div>
-    </div>
-  </div>
+    <script data-main="index2" src="../../ThirdParty/requirejs-2.1.9/require.js"></script>
 </body>
 </html>
