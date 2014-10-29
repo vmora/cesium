@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+<title>Cesium Sandcastle</title>
+<link rel="stylesheet" href="../../ThirdParty/codemirror-4.6/lib/codemirror.css">
+<!-- <link rel="stylesheet" href="CesiumSandcastle.css"> -->
+<script>
+    if (window.location.protocol === 'file:') {
+        if (confirm("You must host this app on a web server.\nSee contributor's guide for more info?")) {
+            window.location = 'https://github.com/AnalyticalGraphicsInc/cesium/wiki/Contributor%27s-Guide';
+        }
+    }
+</script>
+<script src="../../ThirdParty/jshint-2.1.10/jshint.js"></script>
+<script src="jsHintOptions.js"></script>
+<script src="gallery/gallery-index.js"></script>
+
+<link rel="stylesheet" href="../../ThirdParty/codemirror-4.6/addon/hint/show-hint.css">
+
+<script src="../../ThirdParty/jquery-1.11.1/jquery-1.11.1.min.js"></script>
+
+<link rel="stylesheet" href="../../ThirdParty/bootstrap-3.2.0/css/bootstrap.min.css">
+<link rel="stylesheet" href="../../ThirdParty/bootstrap-3.2.0/css/bootstrap-theme.min.css">
+<script src="../../ThirdParty/bootstrap-3.2.0/js/bootstrap.min.js"></script>
+
+<style>
+.navbar-brand {
+    padding: 10px;
+}
+</style>
+
+<meta property="og:title" content="Cesium Sandcastle" />
+<meta property="og:description" content="The Cesium Sandcastle provides an interactive environment for testing Cesium code." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html" />
+<meta property="og:image" content="http://cesiumjs.org/images/Sandcastle.png" />
+<meta property="og:site_name" content="Cesium" />
+<meta property="fb:admins" content="1222088662,1322006496" />
+</head>
+<body>
+  <nav class="navbar navbar-default" role="navigation">
+    <div class="container-fluid">
+      <!-- Brand and toggle get grouped for better mobile display -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+          <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span
+            class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="http://cesiumjs.org/" target="_blank"><img src="./images/Cesium_Logo_Color_Overlay.png"
+          style="height: 100%" /></a>
+      </div>
+
+      <!-- Collect the nav links, forms, and other content for toggling -->
+      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav">
+          <li><a href="#">Run (F8)</a></li>
+          <li><a href="#" class="visible-lg">Suggest (Ctrl-Space)</a></li>
+          <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Info <span class="caret"></span></a>
+            <form class="dropdown-menu">
+              <div class="panel panel-default">
+                <div class="panel-body">
+                  <div>
+                    Description:<br />
+                    <textarea id="description"></textarea>
+                  </div>
+                  <br />
+                  <div>
+                    Labels:<br />
+                    <textarea id="label"></textarea>
+                  </div>
+                </div>
+              </div>
+            </form></li>
+          <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Save As <span class="caret"></span></a>
+            <form class="dropdown-menu">
+              <div class="panel panel-default">
+                <div class="panel-body">
+                  <p>
+                    You must save the file to this folder:
+                    <code>Apps/Sandcastle/gallery/*.html</code>
+                  </p>
+                  <p>
+                    Some browsers require you to manually rename the saved file to a
+                    <code>*.html</code>
+                    file.
+                  </p>
+                  <button type="button" class="btn btn-default">Save *.html file</button>
+                </div>
+              </div>
+            </form></li>
+          <li><a href="#">Open In New Window</a></li>
+          <li><a href="#">View as Thumbnail</a></li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+        </ul>
+      </div>
+      <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container-fluid -->
+  </nav>
+  <!-- Nav tabs -->
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="active"><a href="#gallery" role="tab" data-toggle="tab">Gallery</a></li>
+    <li><a href="#console" role="tab" data-toggle="tab">Console</a></li>
+  </ul>
+
+  <div class="tab-content">
+    <div class="tab-pane active" id="gallery">
+      <div class="container">
+        <div class="row">
+          <form role="search">
+            <div class="form-group">
+              <input type="text" class="form-control" placeholder="Filter">
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane" id="console">
+      <div class="logContainer">
+        <div id="logOutput"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
