@@ -10,7 +10,8 @@ require({
     "use strict";
 
     var viewModel = {
-        galleryItems : gallery_demos
+        galleryItems : gallery_demos,
+        labels : ['Showcase', 'Tutorial', 'Geometry', 'DataSources']
     };
 
     knockout.applyBindings(viewModel, document.body);

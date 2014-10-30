@@ -38,11 +38,12 @@
 
 body {
     margin-top: 56px;
+    margin-bottom: 250px;
 }
 
 .gallery-pane {
     position: absolute;
-    top: 42px;
+    top: 72px;
     bottom: 0;
     right: 0;
     left: 0;
@@ -53,7 +54,7 @@ body {
 
 .footer {
     position: fixed;
-    height: 200px;
+    height: 250px;
     bottom: 0;
     width: 100%;
 }
@@ -75,13 +76,6 @@ body {
 
 .logo {
     height: 100%;
-}
-
-.demoTileThumbnail {
-    max-height: 150px;
-    max-width: 225px;
-    height: 100px;
-    width: auto;
 }
 </style>
 
@@ -109,10 +103,10 @@ body {
                 <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                     <ul class="nav navbar-nav">
                         <li><button type="button" class="btn btn-sm btn-primary navbar-btn">
-                                <span class="glyphicon glyphicon-cog"></span> Run (F8)
+                                <span class="glyphicon glyphicon-cog"></span> Run
                             </button></li>
                         <li><button type="button" class="btn btn-sm btn-primary navbar-btn">
-                                <span class="glyphicon glyphicon-pencil"></span> Suggest (Ctrl-Space)
+                                <span class="glyphicon glyphicon-pencil"></span> Suggest
                             </button></li>
                         <li class="dropdown"><button type="button" class="btn btn-sm btn-primary navbar-btn dropdown-toggle" data-toggle="dropdown">
                                 Info <span class="caret"></span>
@@ -198,13 +192,23 @@ body {
             </ul>
 
             <div class="tab-content">
-                <div class="gallery-pane tab-pane active" id="gallery">
-                    <ul class="list-inline" data-bind="foreach: galleryItems">
+                <div class="tab-pane active" id="gallery">
+                    <div class="row">
+                        <div class="col-xs-8">
+                            <ul class="list-inline" data-bind="foreach: labels">
+                                <li><button class="btn btn-primary btn-sm" data-bind="text: $data"></button></li>
+                            </ul>
+                        </div>
+                        <div class="col-xs-4">
+                            <input type="text" id="search" name="search" />
+                        </div>
+                    </div>
+
+                    <ul class="gallery-pane list-inline" data-bind="foreach: galleryItems">
                         <li>
-                            <div class="thumbnail">
-                                <img class="img-rounded" style="height: 90px;" data-bind="attr:{src: 'gallery/' + img}" />
-                                <div class="caption" data-bind="text: name"></div>
-                            </div>
+                            <button type="button" class="thumbnail">
+                                <span class="caption" style="text-align: center;" data-bind="text: name"></span> <img class="img-rounded" data-bind="attr:{src: 'gallery/' + img}" />
+                            </button>
                         </li>
                     </ul>
                 </div>
