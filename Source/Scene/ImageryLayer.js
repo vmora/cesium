@@ -23,6 +23,7 @@ define([
         '../Renderer/ClearCommand',
         '../Renderer/DrawCommand',
         '../Renderer/MipmapHint',
+        '../Renderer/ShaderSource',
         '../Renderer/TextureMagnificationFilter',
         '../Renderer/TextureMinificationFilter',
         '../Renderer/TextureWrap',
@@ -56,6 +57,7 @@ define([
         ClearCommand,
         DrawCommand,
         MipmapHint,
+        ShaderSource,
         TextureMagnificationFilter,
         TextureMinificationFilter,
         TextureWrap,
@@ -81,14 +83,14 @@ define([
      * @param {Number|Function} [options.alpha=1.0] The alpha blending value of this layer, from 0.0 to 1.0.
      *                          This can either be a simple number or a function with the signature
      *                          <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-     *                          current {@link FrameState}, this layer, and the x, y, and level coordinates of the
+     *                          current frame state, this layer, and the x, y, and level coordinates of the
      *                          imagery tile for which the alpha is required, and it is expected to return
      *                          the alpha value to use for the tile.
      * @param {Number|Function} [options.brightness=1.0] The brightness of this layer.  1.0 uses the unmodified imagery
      *                          color.  Less than 1.0 makes the imagery darker while greater than 1.0 makes it brighter.
      *                          This can either be a simple number or a function with the signature
      *                          <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-     *                          current {@link FrameState}, this layer, and the x, y, and level coordinates of the
+     *                          current frame state, this layer, and the x, y, and level coordinates of the
      *                          imagery tile for which the brightness is required, and it is expected to return
      *                          the brightness value to use for the tile.  The function is executed for every
      *                          frame and for every tile, so it must be fast.
@@ -96,14 +98,14 @@ define([
      *                          Less than 1.0 reduces the contrast while greater than 1.0 increases it.
      *                          This can either be a simple number or a function with the signature
      *                          <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-     *                          current {@link FrameState}, this layer, and the x, y, and level coordinates of the
+     *                          current frame state, this layer, and the x, y, and level coordinates of the
      *                          imagery tile for which the contrast is required, and it is expected to return
      *                          the contrast value to use for the tile.  The function is executed for every
      *                          frame and for every tile, so it must be fast.
      * @param {Number|Function} [options.hue=0.0] The hue of this layer.  0.0 uses the unmodified imagery color.
      *                          This can either be a simple number or a function with the signature
      *                          <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-     *                          current {@link FrameState}, this layer, and the x, y, and level coordinates
+     *                          current frame state, this layer, and the x, y, and level coordinates
      *                          of the imagery tile for which the hue is required, and it is expected to return
      *                          the contrast value to use for the tile.  The function is executed for every
      *                          frame and for every tile, so it must be fast.
@@ -111,14 +113,14 @@ define([
      *                          Less than 1.0 reduces the saturation while greater than 1.0 increases it.
      *                          This can either be a simple number or a function with the signature
      *                          <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-     *                          current {@link FrameState}, this layer, and the x, y, and level coordinates
+     *                          current frame state, this layer, and the x, y, and level coordinates
      *                          of the imagery tile for which the saturation is required, and it is expected to return
      *                          the contrast value to use for the tile.  The function is executed for every
      *                          frame and for every tile, so it must be fast.
      * @param {Number|Function} [options.gamma=1.0] The gamma correction to apply to this layer.  1.0 uses the unmodified imagery color.
      *                          This can either be a simple number or a function with the signature
      *                          <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-     *                          current {@link FrameState}, this layer, and the x, y, and level coordinates of the
+     *                          current frame state, this layer, and the x, y, and level coordinates of the
      *                          imagery tile for which the gamma is required, and it is expected to return
      *                          the gamma value to use for the tile.  The function is executed for every
      *                          frame and for every tile, so it must be fast.
@@ -138,13 +140,8 @@ define([
         options = defaultValue(options, {});
 
         /**
-         * The alpha blending value of this layer, usually from 0.0 to 1.0.
-         * This can either be a simple number or a function with the signature
-         * <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-         * current {@link FrameState}, this layer, and the x, y, and level coordinates of the
-         * imagery tile for which the alpha is required, and it is expected to return
-         * the alpha value to use for the tile.  The function is executed for every
-         * frame and for every tile, so it must be fast.
+         * The alpha blending value of this layer, with 0.0 representing fully transparent and
+         * 1.0 representing fully opaque.
          *
          * @type {Number}
          * @default 1.0
@@ -154,12 +151,6 @@ define([
         /**
          * The brightness of this layer.  1.0 uses the unmodified imagery color.  Less than 1.0
          * makes the imagery darker while greater than 1.0 makes it brighter.
-         * This can either be a simple number or a function with the signature
-         * <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-         * current {@link FrameState}, this layer, and the x, y, and level coordinates of the
-         * imagery tile for which the brightness is required, and it is expected to return
-         * the brightness value to use for the tile.  The function is executed for every
-         * frame and for every tile, so it must be fast.
          *
          * @type {Number}
          * @default {@link ImageryLayer.DEFAULT_BRIGHTNESS}
@@ -169,12 +160,6 @@ define([
         /**
          * The contrast of this layer.  1.0 uses the unmodified imagery color.  Less than 1.0 reduces
          * the contrast while greater than 1.0 increases it.
-         * This can either be a simple number or a function with the signature
-         * <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-         * current {@link FrameState}, this layer, and the x, y, and level coordinates of the
-         * imagery tile for which the contrast is required, and it is expected to return
-         * the contrast value to use for the tile.  The function is executed for every
-         * frame and for every tile, so it must be fast.
          *
          * @type {Number}
          * @default {@link ImageryLayer.DEFAULT_CONTRAST}
@@ -182,12 +167,7 @@ define([
         this.contrast = defaultValue(options.contrast, defaultValue(imageryProvider.defaultContrast, ImageryLayer.DEFAULT_CONTRAST));
 
         /**
-         * The hue of this layer in radians. 0.0 uses the unmodified imagery color. This can either be a
-         * simple number or a function with the signature <code>function(frameState, layer, x, y, level)</code>.
-         * The function is passed the current {@link FrameState}, this layer, and the x, y, and level
-         * coordinates of the imagery tile for which the hue is required, and it is expected to return
-         * the hue value to use for the tile.  The function is executed for every
-         * frame and for every tile, so it must be fast.
+         * The hue of this layer in radians. 0.0 uses the unmodified imagery color.
          *
          * @type {Number}
          * @default {@link ImageryLayer.DEFAULT_HUE}
@@ -196,12 +176,7 @@ define([
 
         /**
          * The saturation of this layer. 1.0 uses the unmodified imagery color. Less than 1.0 reduces the
-         * saturation while greater than 1.0 increases it. This can either be a simple number or a function
-         * with the signature <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-         * current {@link FrameState}, this layer, and the x, y, and level coordinates of the
-         * imagery tile for which the saturation is required, and it is expected to return
-         * the saturation value to use for the tile.  The function is executed for every
-         * frame and for every tile, so it must be fast.
+         * saturation while greater than 1.0 increases it.
          *
          * @type {Number}
          * @default {@link ImageryLayer.DEFAULT_SATURATION}
@@ -210,12 +185,6 @@ define([
 
         /**
          * The gamma correction to apply to this layer.  1.0 uses the unmodified imagery color.
-         * This can either be a simple number or a function with the signature
-         * <code>function(frameState, layer, x, y, level)</code>.  The function is passed the
-         * current {@link FrameState}, this layer, and the x, y, and level coordinates of the
-         * imagery tile for which the gamma is required, and it is expected to return
-         * the gamma value to use for the tile.  The function is executed for every
-         * frame and for every tile, so it must be fast.
          *
          * @type {Number}
          * @default {@link ImageryLayer.DEFAULT_GAMMA}
@@ -241,7 +210,7 @@ define([
         this._skeletonPlaceholder = new TileImagery(Imagery.createPlaceholder(this));
 
         // The value of the show property on the last update.
-        this._show = false;
+        this._show = true;
 
         // The index of this layer in the ImageryLayerCollection.
         this._layerIndex = -1;
@@ -365,6 +334,10 @@ define([
         return destroyObject(this);
     };
 
+    var imageryBoundsScratch = new Rectangle();
+    var tileImageryBoundsScratch = new Rectangle();
+    var clippedRectangleScratch = new Rectangle();
+
     /**
      * Create skeletons for the imagery tiles that partially or completely overlap a given terrain
      * tile.
@@ -377,6 +350,8 @@ define([
      * @returns {Boolean} true if this layer overlaps any portion of the terrain tile; otherwise, false.
      */
     ImageryLayer.prototype._createTileImagerySkeletons = function(tile, terrainProvider, insertionPoint) {
+        var surfaceTile = tile.data;
+
         if (defined(this._minimumTerrainLevel) && tile.level < this._minimumTerrainLevel) {
             return false;
         }
@@ -387,7 +362,7 @@ define([
         var imageryProvider = this._imageryProvider;
 
         if (!defined(insertionPoint)) {
-            insertionPoint = tile.imagery.length;
+            insertionPoint = surfaceTile.imagery.length;
         }
 
         if (!imageryProvider.ready) {
@@ -395,7 +370,7 @@ define([
             // Instead, add a placeholder so that we'll know to create
             // the skeletons once the provider is ready.
             this._skeletonPlaceholder.loadingImagery.addReference();
-            tile.imagery.splice(insertionPoint, 0, this._skeletonPlaceholder);
+            surfaceTile.imagery.splice(insertionPoint, 0, this._skeletonPlaceholder);
             return true;
         }
 
@@ -403,8 +378,8 @@ define([
         // the geometry tile.  The ImageryProvider and ImageryLayer both have the
         // opportunity to constrain the rectangle.  The imagery TilingScheme's rectangle
         // always fully contains the ImageryProvider's rectangle.
-        var rectangle = Rectangle.intersectWith(tile.rectangle, imageryProvider.rectangle);
-        rectangle = Rectangle.intersectWith(rectangle, this._rectangle);
+        var imageryBounds = Rectangle.intersectWith(imageryProvider.rectangle, this._rectangle, imageryBoundsScratch);
+        var rectangle = Rectangle.intersectWith(tile.rectangle, imageryBounds, tileImageryBoundsScratch);
 
         if (rectangle.east <= rectangle.west || rectangle.north <= rectangle.south) {
             // There is no overlap between this terrain tile and this imagery
@@ -414,7 +389,7 @@ define([
                 return false;
             }
 
-            var baseImageryRectangle = Rectangle.intersectWith(imageryProvider.rectangle, this._rectangle);
+            var baseImageryRectangle = imageryBounds;
             var baseTerrainRectangle = tile.rectangle;
 
             if (baseTerrainRectangle.south >= baseImageryRectangle.north) {
@@ -458,8 +433,8 @@ define([
         }
 
         var imageryTilingScheme = imageryProvider.tilingScheme;
-        var northwestTileCoordinates = imageryTilingScheme.positionToTileXY(Rectangle.getNorthwest(rectangle), imageryLevel);
-        var southeastTileCoordinates = imageryTilingScheme.positionToTileXY(Rectangle.getSoutheast(rectangle), imageryLevel);
+        var northwestTileCoordinates = imageryTilingScheme.positionToTileXY(Rectangle.northwest(rectangle), imageryLevel);
+        var southeastTileCoordinates = imageryTilingScheme.positionToTileXY(Rectangle.southeast(rectangle), imageryLevel);
 
         // If the southeast corner of the rectangle lies very close to the north or west side
         // of the southeast tile, we don't actually need the southernmost or easternmost
@@ -492,6 +467,7 @@ define([
 
         var terrainRectangle = tile.rectangle;
         var imageryRectangle = imageryTilingScheme.tileXYToRectangle(northwestTileCoordinates.x, northwestTileCoordinates.y, imageryLevel);
+        var clippedImageryRectangle = Rectangle.intersectWith(imageryRectangle, imageryBounds, clippedRectangleScratch);
 
         var minU;
         var maxU = 0.0;
@@ -502,12 +478,12 @@ define([
         // If this is the northern-most or western-most tile in the imagery tiling scheme,
         // it may not start at the northern or western edge of the terrain tile.
         // Calculate where it does start.
-        if (!this.isBaseLayer() && Math.abs(imageryRectangle.west - tile.rectangle.west) >= veryCloseX) {
-            maxU = Math.min(1.0, (imageryRectangle.west - terrainRectangle.west) / (terrainRectangle.east - terrainRectangle.west));
+        if (!this.isBaseLayer() && Math.abs(clippedImageryRectangle.west - tile.rectangle.west) >= veryCloseX) {
+            maxU = Math.min(1.0, (clippedImageryRectangle.west - terrainRectangle.west) / (terrainRectangle.east - terrainRectangle.west));
         }
 
-        if (!this.isBaseLayer() && Math.abs(imageryRectangle.north - tile.rectangle.north) >= veryCloseY) {
-            minV = Math.max(0.0, (imageryRectangle.north - terrainRectangle.south) / (terrainRectangle.north - terrainRectangle.south));
+        if (!this.isBaseLayer() && Math.abs(clippedImageryRectangle.north - tile.rectangle.north) >= veryCloseY) {
+            minV = Math.max(0.0, (clippedImageryRectangle.north - terrainRectangle.south) / (terrainRectangle.north - terrainRectangle.south));
         }
 
         var initialMinV = minV;
@@ -516,13 +492,15 @@ define([
             minU = maxU;
 
             imageryRectangle = imageryTilingScheme.tileXYToRectangle(i, northwestTileCoordinates.y, imageryLevel);
-            maxU = Math.min(1.0, (imageryRectangle.east - terrainRectangle.west) / (terrainRectangle.east - terrainRectangle.west));
+            clippedImageryRectangle = Rectangle.intersectWith(imageryRectangle, imageryBounds, clippedRectangleScratch);
+
+            maxU = Math.min(1.0, (clippedImageryRectangle.east - terrainRectangle.west) / (terrainRectangle.east - terrainRectangle.west));
 
             // If this is the eastern-most imagery tile mapped to this terrain tile,
             // and there are more imagery tiles to the east of this one, the maxU
             // should be 1.0 to make sure rounding errors don't make the last
             // image fall shy of the edge of the terrain tile.
-            if (i === southeastTileCoordinates.x && (this.isBaseLayer() || Math.abs(imageryRectangle.east - tile.rectangle.east) < veryCloseX)) {
+            if (i === southeastTileCoordinates.x && (this.isBaseLayer() || Math.abs(clippedImageryRectangle.east - tile.rectangle.east) < veryCloseX)) {
                 maxU = 1.0;
             }
 
@@ -532,19 +510,20 @@ define([
                 maxV = minV;
 
                 imageryRectangle = imageryTilingScheme.tileXYToRectangle(i, j, imageryLevel);
-                minV = Math.max(0.0, (imageryRectangle.south - terrainRectangle.south) / (terrainRectangle.north - terrainRectangle.south));
+                clippedImageryRectangle = Rectangle.intersectWith(imageryRectangle, imageryBounds, clippedRectangleScratch);
+                minV = Math.max(0.0, (clippedImageryRectangle.south - terrainRectangle.south) / (terrainRectangle.north - terrainRectangle.south));
 
                 // If this is the southern-most imagery tile mapped to this terrain tile,
                 // and there are more imagery tiles to the south of this one, the minV
                 // should be 0.0 to make sure rounding errors don't make the last
                 // image fall shy of the edge of the terrain tile.
-                if (j === southeastTileCoordinates.y && (this.isBaseLayer() || Math.abs(imageryRectangle.south - tile.rectangle.south) < veryCloseY)) {
+                if (j === southeastTileCoordinates.y && (this.isBaseLayer() || Math.abs(clippedImageryRectangle.south - tile.rectangle.south) < veryCloseY)) {
                     minV = 0.0;
                 }
 
                 var texCoordsRectangle = new Cartesian4(minU, minV, maxU, maxV);
                 var imagery = this.getImageryFromCache(i, j, imageryLevel, imageryRectangle);
-                tile.imagery.splice(insertionPoint, 0, new TileImagery(imagery, texCoordsRectangle));
+                surfaceTile.imagery.splice(insertionPoint, 0, new TileImagery(imagery, texCoordsRectangle));
                 ++insertionPoint;
             }
         }
@@ -554,7 +533,7 @@ define([
 
     /**
      * Calculate the translation and scale for a particular {@link TileImagery} attached to a
-     * particular terrain {@link Tile}.
+     * particular terrain tile.
      *
      * @private
      *
@@ -854,10 +833,20 @@ define([
                 bufferUsage : BufferUsage.STATIC_DRAW
             });
 
-            reproject.shaderProgram = context.createShaderProgram(
-                ReprojectWebMercatorVS,
-                ReprojectWebMercatorFS,
-                reprojectAttribInds);
+            var vs = new ShaderSource({
+                sources : [ReprojectWebMercatorVS]
+            });
+
+            // Firefox 33-34 has a regression that prevents the CORDIC implementation from compiling
+            // https://github.com/AnalyticalGraphicsInc/cesium/issues/2197
+            if (FeatureDetection.isFirefox()) {
+                var firefoxVersion = FeatureDetection.firefoxVersion();
+                if (firefoxVersion[0] >= 33 && firefoxVersion[0] <= 34) {
+                    vs.defines.push('DISABLE_CORDIC');
+                }
+            }
+
+            reproject.shaderProgram = context.createShaderProgram(vs, ReprojectWebMercatorFS, reprojectAttribInds);
 
             var maximumSupportedAnisotropy = context.maximumTextureFilterAnisotropy;
             reproject.sampler = context.createSampler({

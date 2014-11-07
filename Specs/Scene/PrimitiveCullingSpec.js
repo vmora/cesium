@@ -3,7 +3,6 @@ defineSuite([
         'Core/BoundingSphere',
         'Core/Cartesian2',
         'Core/Cartesian3',
-        'Core/Cartographic',
         'Core/defaultValue',
         'Core/Ellipsoid',
         'Core/Math',
@@ -11,7 +10,6 @@ defineSuite([
         'Renderer/TextureMagnificationFilter',
         'Renderer/TextureMinificationFilter',
         'Scene/BillboardCollection',
-        'Scene/Camera',
         'Scene/HorizontalOrigin',
         'Scene/LabelCollection',
         'Scene/Material',
@@ -26,13 +24,11 @@ defineSuite([
         'Specs/createContext',
         'Specs/createFrameState',
         'Specs/destroyContext',
-        'Specs/frameState',
         'Specs/render'
     ], 'Scene/PrimitiveCulling', function(
         BoundingSphere,
         Cartesian2,
         Cartesian3,
-        Cartographic,
         defaultValue,
         Ellipsoid,
         CesiumMath,
@@ -40,7 +36,6 @@ defineSuite([
         TextureMagnificationFilter,
         TextureMinificationFilter,
         BillboardCollection,
-        Camera,
         HorizontalOrigin,
         LabelCollection,
         Material,
@@ -55,18 +50,19 @@ defineSuite([
         createContext,
         createFrameState,
         destroyContext,
-        frameState,
         render) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     var context;
+    var frameState;
     var primitives;
     var us;
     var camera;
 
     beforeAll(function() {
         context = createContext();
+        frameState = createFrameState();
     });
 
     afterAll(function() {
@@ -281,10 +277,12 @@ defineSuite([
         var polygon = new Polygon();
         polygon.ellipsoid = ellipsoid;
         polygon.granularity = CesiumMath.toRadians(20.0);
-        polygon.positions = [ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-degree, -degree, 0.0)),
-                              ellipsoid.cartographicToCartesian(Cartographic.fromDegrees( degree, -degree, 0.0)),
-                              ellipsoid.cartographicToCartesian(Cartographic.fromDegrees( degree,  degree, 0.0)),
-                              ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-degree,  degree, 0.0))];
+        polygon.positions = Cartesian3.fromDegreesArray([
+            -degree, -degree,
+            degree, -degree,
+            degree,  degree,
+            -degree,  degree
+        ]);
         polygon.asynchronous = false;
         polygon.material.translucent = false;
         return polygon;
@@ -344,7 +342,7 @@ defineSuite([
     it('label occlusion', function() {
         var labels = new LabelCollection();
         labels.add({
-            position : Ellipsoid.WGS84.cartographicToCartesian(new Cartographic.fromDegrees(-75.10, 39.57)),
+            position : Cartesian3.fromDegrees(-75.10, 39.57),
             text : 'x',
             horizontalOrigin : HorizontalOrigin.CENTER,
             verticalOrigin : VerticalOrigin.CENTER
@@ -365,12 +363,8 @@ defineSuite([
     });
 
     function createBillboard() {
-        var mockScene = {
-            context : context
-        };
         var atlas = new TextureAtlas({
-            scene : mockScene,
-            images : [greenImage],
+            context : context,
             borderWidthInPixels : 1,
             initialSize : new Cartesian2(3, 3)
         });
@@ -384,8 +378,8 @@ defineSuite([
         var billboards = new BillboardCollection();
         billboards.textureAtlas = atlas;
         billboards.add({
-            position : Ellipsoid.WGS84.cartographicToCartesian(new Cartographic.fromDegrees(-75.10, 39.57)),
-            imageIndex : 0
+            position : Cartesian3.fromDegrees(-75.10, 39.57),
+            image : greenImage
         });
 
         return billboards;
@@ -417,9 +411,9 @@ defineSuite([
 
         var polylines = new PolylineCollection();
         polylines.add({
-            positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                new Cartographic.fromDegrees(-75.10, 39.57),
-                new Cartographic.fromDegrees(-80.12, 25.46)
+            positions : Cartesian3.fromDegreesArray([
+                -75.10, 39.57,
+                -80.12, 25.46
             ]),
             material : material
         });

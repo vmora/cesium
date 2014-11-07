@@ -1,21 +1,22 @@
 /*global define*/
 define([
-        'Core/defined',
-        'Core/formatError',
-        'Core/getFilenameFromUri',
-        'DynamicScene/CzmlDataSource',
-        'DynamicScene/GeoJsonDataSource',
-        'DynamicScene/VideoMaterialProperty',
-        'Scene/TileMapServiceImageryProvider',
-        'Widgets/Viewer/Viewer',
-        'Widgets/Viewer/viewerCesiumInspectorMixin',
-        'Widgets/Viewer/viewerDragDropMixin',
-        'Widgets/Viewer/viewerDynamicObjectMixin',
+        'Cesium/Core/defined',
+        'Cesium/Core/formatError',
+        'Cesium/Core/getFilenameFromUri',
+        'Cesium/Core/queryToObject',
+        'Cesium/DataSources/CzmlDataSource',
+        'Cesium/DataSources/GeoJsonDataSource',
+        'Cesium/Scene/TileMapServiceImageryProvider',
+        'Cesium/Widgets/Viewer/Viewer',
+        'Cesium/Widgets/Viewer/viewerCesiumInspectorMixin',
+        'Cesium/Widgets/Viewer/viewerDragDropMixin',
+        'Cesium/Widgets/Viewer/viewerEntityMixin',
         'domReady!'
     ], function(
         defined,
         formatError,
         getFilenameFromUri,
+        queryToObject,
         CzmlDataSource,
         GeoJsonDataSource,
         VideoMaterialProperty,
@@ -23,7 +24,7 @@ define([
         Viewer,
         viewerCesiumInspectorMixin,
         viewerDragDropMixin,
-        viewerDynamicObjectMixin) {
+        viewerEntityMixin) {
     "use strict";
     /*global console*/
 
@@ -33,35 +34,24 @@ define([
      * 'source' : 'file.czml',  // The relative URL of the CZML file to load at startup.
      * 'stats'  : true,         // Enable the FPS performance display.
      * 'theme'  : 'lighter',    // Use the dark-text-on-light-background theme.
+     * 'scene3DOnly' : false    // Enable 3D only mode
      */
-    var endUserOptions = {};
-    var queryString = window.location.search.substring(1);
-    if (queryString !== '') {
-        var params = queryString.split('&');
-        for (var i = 0, len = params.length; i < len; ++i) {
-            var param = params[i];
-            var keyValuePair = param.split('=');
-            if (keyValuePair.length > 1) {
-                endUserOptions[keyValuePair[0]] = decodeURIComponent(keyValuePair[1].replace(/\+/g, ' '));
-            }
-        }
-    }
-
-    var loadingIndicator = document.getElementById('loadingIndicator');
+    var endUserOptions = queryToObject(window.location.search.substring(1));
 
     var imageryProvider;
-
     if (endUserOptions.tmsImageryUrl) {
         imageryProvider = new TileMapServiceImageryProvider({
             url : endUserOptions.tmsImageryUrl
         });
     }
 
+    var loadingIndicator = document.getElementById('loadingIndicator');
     var viewer;
     try {
         viewer = new Viewer('cesiumContainer', {
             imageryProvider : imageryProvider,
-            baseLayerPicker : !defined(imageryProvider)
+            baseLayerPicker : !defined(imageryProvider),
+            scene3DOnly : endUserOptions.scene3DOnly
         });
     } catch (exception) {
         loadingIndicator.style.display = 'none';
@@ -75,7 +65,7 @@ define([
     VideoMaterialProperty.context = viewer.scene._context;
 
     viewer.extend(viewerDragDropMixin);
-    viewer.extend(viewerDynamicObjectMixin);
+    viewer.extend(viewerEntityMixin);
     if (endUserOptions.inspector) {
         viewer.extend(viewerCesiumInspectorMixin);
     }
@@ -120,11 +110,11 @@ define([
             loadPromise.then(function() {
                 var lookAt = endUserOptions.lookAt;
                 if (defined(lookAt)) {
-                    var dynamicObject = dataSource.dynamicObjects.getById(lookAt);
-                    if (defined(dynamicObject)) {
-                        viewer.trackedObject = dynamicObject;
+                    var entity = dataSource.entities.getById(lookAt);
+                    if (defined(entity)) {
+                        viewer.trackedEntity = entity;
                     } else {
-                        var error = 'No object with id "' + lookAt + '" exists in the provided source.';
+                        var error = 'No entity with id "' + lookAt + '" exists in the provided data source.';
                         showLoadError(source, error);
                     }
                 }

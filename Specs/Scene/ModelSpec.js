@@ -4,9 +4,8 @@ defineSuite([
         'Core/Cartesian2',
         'Core/Cartesian3',
         'Core/Cartesian4',
-        'Core/Cartographic',
         'Core/defaultValue',
-        'Core/Ellipsoid',
+        'Core/FeatureDetection',
         'Core/JulianDate',
         'Core/Math',
         'Core/Matrix4',
@@ -20,9 +19,8 @@ defineSuite([
         Cartesian2,
         Cartesian3,
         Cartesian4,
-        Cartographic,
         defaultValue,
-        Ellipsoid,
+        FeatureDetection,
         JulianDate,
         CesiumMath,
         Matrix4,
@@ -32,18 +30,18 @@ defineSuite([
         createScene,
         destroyScene) {
     "use strict";
-    /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
+    /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor,WebGLRenderingContext*/
 
-    var duckUrl = './Data/Models/duck/duck.json';
-    var customDuckUrl = './Data/Models/customDuck/duck.json';
-    var embeddedDuckUrl = './Data/Models/embeddedDuck/duck.json';
-    var cesiumAirUrl = './Data/Models/CesiumAir/CesiumAir.json';
-    var animBoxesUrl = './Data/Models/anim-test-1-boxes/anim-test-1-boxes.json';
-    var riggedFigureUrl = './Data/Models/rigged-figure-test/rigged-figure-test.json';
+    var duckUrl = './Data/Models/duck/duck.gltf';
+    var customDuckUrl = './Data/Models/customDuck/duck.gltf';
+    var separateDuckUrl = './Data/Models/separateDuck/duck.gltf';
+    var cesiumAirUrl = './Data/Models/CesiumAir/Cesium_Air.gltf';
+    var animBoxesUrl = './Data/Models/anim-test-1-boxes/anim-test-1-boxes.gltf';
+    var riggedFigureUrl = './Data/Models/rigged-figure-test/rigged-figure-test.gltf';
 
     var duckModel;
     var customDuckModel;
-    var embeddedDuckModel;
+    var separateDuckModel;
     var cesiumAirModel;
     var animBoxesModel;
     var riggedFigureModel;
@@ -60,44 +58,38 @@ defineSuite([
         destroyScene(scene);
     });
 
+    function addZoomTo(model) {
+        model.zoomTo = function() {
+            var center = Matrix4.multiplyByPoint(model.modelMatrix, model.boundingSphere.center, new Cartesian3());
+            var transform = Transforms.eastNorthUpToFixedFrame(center);
+
+            // View in east-north-up frame
+            var camera = scene.camera;
+            camera.transform = transform;
+            camera.constrainedAxis = Cartesian3.UNIT_Z;
+
+            // Zoom in
+            var r = Math.max(model.boundingSphere.radius, camera.frustum.near);
+            camera.lookAt(
+                new Cartesian3(r, -r, -r),
+                Cartesian3.ZERO,
+                Cartesian3.UNIT_Z);
+        };
+    }
+
     function loadModel(url, options) {
         options = defaultValue(options, {});
 
-        var ellipsoid = Ellipsoid.WGS84;
-        var modelMatrix = Transforms.eastNorthUpToFixedFrame(ellipsoid.cartographicToCartesian(new Cartographic(0.0, 0.0, 100.0)));
-
         var model = primitives.add(Model.fromGltf({
             url : url,
-            modelMatrix : modelMatrix,
+            modelMatrix : Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(0.0, 0.0, 100.0)),
             show : false,
             scale : options.scale,
             minimumPixelSize : options.minimumPixelSize,
             id : url,        // for picking tests
             asynchronous : options.asynchronous
         }));
-
-        model.readyToRender.addEventListener(function(model) {
-            model.zoomTo = function() {
-                var center = Matrix4.multiplyByPoint(model.modelMatrix, model.boundingSphere.center);
-                var transform = Transforms.eastNorthUpToFixedFrame(center);
-
-                // View in east-north-up frame
-                var camera = scene.camera;
-                camera.transform = transform;
-                camera.constrainedAxis = Cartesian3.UNIT_Z;
-
-                var controller = scene.screenSpaceCameraController;
-                controller.ellipsoid = Ellipsoid.UNIT_SPHERE;
-                controller.enableTilt = false;
-
-                // Zoom in
-                var r = Math.max(model.boundingSphere.radius, camera.frustum.near);
-                camera.lookAt(
-                    new Cartesian3(0.0, -r, r),
-                    Cartesian3.ZERO,
-                    Cartesian3.UNIT_Z);
-            };
-        });
+        addZoomTo(model);
 
         waitsFor(function() {
             // Render scene to progressively load the model
@@ -125,8 +117,7 @@ defineSuite([
     });
 
     it('sets model properties', function() {
-        var ellipsoid = Ellipsoid.WGS84;
-        var modelMatrix = Transforms.eastNorthUpToFixedFrame(ellipsoid.cartographicToCartesian(new Cartographic(0.0, 0.0, 100.0)));
+        var modelMatrix = Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(0.0, 0.0, 100.0));
 
        expect(duckModel.gltf).toBeDefined();
        expect(duckModel.basePath).toEqual('./Data/Models/duck/');
@@ -150,6 +141,103 @@ defineSuite([
         duckModel.zoomTo();
         expect(scene.renderForSpecs()).not.toEqual([0, 0, 0, 255]);
         duckModel.show = false;
+    });
+
+    it('renders from glTF', function() {
+        // Simulate using procedural glTF as opposed to loading it from a file
+        var model = primitives.add(new Model({
+            gltf : duckModel.gltf,
+            modelMatrix : Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(0.0, 0.0, 100.0)),
+            show : false
+        }));
+        addZoomTo(model);
+
+        waitsFor(function() {
+            // Render scene to progressively load the model
+            scene.renderForSpecs();
+            return model.ready;
+        }, 'ready', 10000);
+
+        runs(function() {
+            expect(scene.renderForSpecs()).toEqual([0, 0, 0, 255]);
+
+            model.show = true;
+            model.zoomTo();
+            expect(scene.renderForSpecs()).not.toEqual([0, 0, 0, 255]);
+            primitives.remove(model);
+        });
+    });
+
+    it('Applies the right render state', function() {
+        // Simulate using procedural glTF as opposed to loading it from a file
+        var model = primitives.add(new Model({
+            gltf : duckModel.gltf
+        }));
+
+        spyOn(scene.context, 'createRenderState').andCallThrough();
+
+        waitsFor(function() {
+            // Render scene to progressively load the model
+            scene.renderForSpecs();
+            return model.ready;
+        }, 'ready', 10000);
+
+        var rs = {
+            frontFace : WebGLRenderingContext.CCW,
+            cull : {
+                enabled : true,
+                face : WebGLRenderingContext.BACK
+            },
+            lineWidth : 1.0,
+            polygonOffset : {
+                enabled : false,
+                factor : 0.0,
+                units : 0.0
+            },
+            scissorTest : {
+                enabled : false,
+                rectangle : {
+                    x : 0.0,
+                    y : 0.0,
+                    width : 0.0,
+                    height : 0.0
+                }
+            },
+            depthRange : {
+                near : 0.0,
+                far : 1.0
+            },
+            depthTest : {
+                enabled : true,
+                func : WebGLRenderingContext.LESS
+            },
+            colorMask : {
+                red : true,
+                green : true,
+                blue : true,
+                alpha : true
+            },
+            depthMask : true,
+            blending : {
+                enabled : false,
+                color : {
+                    red : 0.0,
+                    green : 0.0,
+                    blue : 0.0,
+                    alpha : 0.0
+                },
+                equationRgb : WebGLRenderingContext.FUNC_ADD,
+                equationAlpha : WebGLRenderingContext.FUNC_ADD,
+                functionSourceRgb : WebGLRenderingContext.ONE,
+                functionSourceAlpha : WebGLRenderingContext.ONE,
+                functionDestinationRgb : WebGLRenderingContext.ZERO,
+                functionDestinationAlpha : WebGLRenderingContext.ZERO
+            }
+        };
+
+        runs(function() {
+            expect(scene.context.createRenderState).toHaveBeenCalledWith(rs);
+        });
     });
 
     it('renders bounding volume', function() {
@@ -180,6 +268,11 @@ defineSuite([
     });
 
     it('is picked', function() {
+        if (FeatureDetection.isInternetExplorer()) {
+            // Workaround IE 11.0.9.  This test fails when all tests are ran without a breakpoint here.
+            return;
+        }
+
         duckModel.show = true;
         duckModel.zoomTo();
 
@@ -193,6 +286,11 @@ defineSuite([
     });
 
     it('is picked with a new pick id', function() {
+        if (FeatureDetection.isInternetExplorer()) {
+            // Workaround IE 11.0.9.  This test fails when all tests are ran without a breakpoint here.
+            return;
+        }
+
         var oldId = duckModel.id;
         duckModel.id = 'id';
         duckModel.show = true;
@@ -230,7 +328,7 @@ defineSuite([
         expect(duckModel.getNode('name-of-node-that-does-not-exist')).not.toBeDefined();
     });
 
-    it('getNode returns returns a node', function() {
+    it('getNode returns a node', function() {
         var node = duckModel.getNode('LOD3sp');
         expect(node).toBeDefined();
         expect(node.name).toEqual('LOD3sp');
@@ -238,7 +336,7 @@ defineSuite([
 
         // Change node transform and render
         expect(duckModel._cesiumAnimationsDirty).toEqual(false);
-        node.matrix = Matrix4.fromUniformScale(1.25);
+        node.matrix = Matrix4.fromUniformScale(1.01, new Matrix4());
         expect(duckModel._cesiumAnimationsDirty).toEqual(true);
 
         expect(scene.renderForSpecs()).toEqual([0, 0, 0, 255]);
@@ -249,7 +347,7 @@ defineSuite([
 
         expect(duckModel._cesiumAnimationsDirty).toEqual(false);
 
-        node.matrix = Matrix4.fromUniformScale(1.0);
+        node.matrix = Matrix4.fromUniformScale(1.0, new Matrix4());
     });
 
     it('getMesh throws when model is not loaded', function() {
@@ -349,8 +447,8 @@ defineSuite([
 
     it('boundingSphere returns the bounding sphere', function() {
         var boundingSphere = duckModel.boundingSphere;
-        expect(boundingSphere.center).toEqualEpsilon(new Cartesian3(13.440, 86.949, -3.701), CesiumMath.EPSILON3);
-        expect(boundingSphere.radius).toEqualEpsilon(126.880, CesiumMath.EPSILON3);
+        expect(boundingSphere.center).toEqualEpsilon(new Cartesian3(0.134, 0.037, 0.869), CesiumMath.EPSILON3);
+        expect(boundingSphere.radius).toEqualEpsilon(1.268, CesiumMath.EPSILON3);
     });
 
     it('destroys', function() {
@@ -380,17 +478,17 @@ defineSuite([
 
     ///////////////////////////////////////////////////////////////////////////
 
-    it('loads embeddedDuck', function() {
-        embeddedDuckModel = loadModel(embeddedDuckUrl);
+    it('loads separateDuck', function() {
+        separateDuckModel = loadModel(separateDuckUrl);
     });
 
-    it('renders embeddedDuckModel (NPOT textures and all uniform semantics)', function() {
+    it('renders separateDuckModel (external .glsl, .bin, and .png files)', function() {
         expect(scene.renderForSpecs()).toEqual([0, 0, 0, 255]);
 
-        embeddedDuckModel.show = true;
-        embeddedDuckModel.zoomTo();
+        separateDuckModel.show = true;
+        separateDuckModel.zoomTo();
         expect(scene.renderForSpecs()).not.toEqual([0, 0, 0, 255]);
-        embeddedDuckModel.show = false;
+        separateDuckModel.show = false;
     });
 
     ///////////////////////////////////////////////////////////////////////////
@@ -414,6 +512,11 @@ defineSuite([
     });
 
     it('picks cesiumAir', function() {
+        if (FeatureDetection.isInternetExplorer()) {
+            // Workaround IE 11.0.9.  This test fails when all tests are ran without a breakpoint here.
+            return;
+        }
+
         cesiumAirModel.show = true;
         cesiumAirModel.zoomTo();
 
@@ -501,7 +604,7 @@ defineSuite([
         expect(a).toBeDefined();
         expect(a.name).toEqual('animation_1');
         expect(a.startTime).not.toBeDefined();
-        expect(a.startOffset).toEqual(0.0);
+        expect(a.delay).toEqual(0.0);
         expect(a.stopTime).not.toBeDefined();
         expect(a.removeOnStop).toEqual(false);
         expect(a.speedup).toEqual(1.0);
@@ -590,7 +693,7 @@ defineSuite([
 
         waitsFor(function() {
             scene.renderForSpecs(time);
-            time = time.addSeconds(1.0, time);
+            time = JulianDate.addSeconds(time, 1.0, time, new JulianDate());
             return stopped;
         }, 'raises animation start, update, and stop events when removeOnStop is true', 10000);
 
@@ -611,14 +714,14 @@ defineSuite([
         });
     });
 
-    it('Animates with a startOffset', function() {
+    it('Animates with a delay', function() {
         var time = JulianDate.fromDate(new Date('January 1, 2014 12:00:00 UTC'));
 
         var animations = animBoxesModel.activeAnimations;
         var a = animations.add({
             name : 'animation_1',
             startTime : time,
-            startOffset : 1.0
+            delay : 1.0
         });
 
         var spyStart = jasmine.createSpy('listener');
@@ -626,7 +729,7 @@ defineSuite([
 
         animBoxesModel.show = true;
         scene.renderForSpecs(time); // Does not fire start
-        scene.renderForSpecs(time.addSeconds(1.0));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 1.0, new JulianDate()));
 
         expect(spyStart.calls.length).toEqual(1);
 
@@ -650,8 +753,8 @@ defineSuite([
 
         animBoxesModel.show = true;
         scene.renderForSpecs(time);
-        scene.renderForSpecs(time.addSeconds(1.0));
-        scene.renderForSpecs(time.addSeconds(2.0)); // Does not fire update
+        scene.renderForSpecs(JulianDate.addSeconds(time, 1.0, new JulianDate()));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 2.0, new JulianDate())); // Does not fire update
 
         expect(spyUpdate.calls.length).toEqual(2);
         expect(spyUpdate.calls[0].args[2]).toEqualEpsilon(0.0, CesiumMath.EPSILON14);
@@ -674,8 +777,8 @@ defineSuite([
 
         animBoxesModel.show = true;
         scene.renderForSpecs(time);
-        scene.renderForSpecs(time.addSeconds(1.0));
-        scene.renderForSpecs(time.addSeconds(2.0));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 1.0, new JulianDate()));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 2.0, new JulianDate()));
 
         expect(spyUpdate.calls.length).toEqual(3);
         expect(spyUpdate.calls[0].args[2]).toEqualEpsilon(0.0, CesiumMath.EPSILON14);
@@ -699,9 +802,9 @@ defineSuite([
 
         animBoxesModel.show = true;
         scene.renderForSpecs(time);
-        scene.renderForSpecs(time.addSeconds(1.0));
-        scene.renderForSpecs(time.addSeconds(2.0));
-        scene.renderForSpecs(time.addSeconds(3.0));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 1.0, new JulianDate()));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 2.0, new JulianDate()));
+        scene.renderForSpecs(JulianDate.addSeconds(time, 3.0, new JulianDate()));
 
         expect(spyUpdate.calls.length).toEqual(4);
         expect(spyUpdate.calls[0].args[2]).toEqualEpsilon(3.708, CesiumMath.EPSILON3);
@@ -726,7 +829,7 @@ defineSuite([
 
         animBoxesModel.show = true;
         for (var i = 0; i < 8; ++i) {
-            scene.renderForSpecs(time.addSeconds(i));
+            scene.renderForSpecs(JulianDate.addSeconds(time, i, new JulianDate()));
         }
 
         expect(spyUpdate.calls.length).toEqual(8);
@@ -756,7 +859,7 @@ defineSuite([
 
         animBoxesModel.show = true;
         for (var i = 0; i < 8; ++i) {
-            scene.renderForSpecs(time.addSeconds(i));
+            scene.renderForSpecs(JulianDate.addSeconds(time, i, new JulianDate()));
         }
 
         expect(spyUpdate.calls.length).toEqual(8);
@@ -786,7 +889,7 @@ defineSuite([
         animBoxesModel.zoomTo();
 
         for (var i = 0; i < 4; ++i) {
-            var t = time.addSeconds(i);
+            var t = JulianDate.addSeconds(time, i, new JulianDate());
             expect(scene.renderForSpecs(t)).toEqual([0, 0, 0, 255]);
 
             animBoxesModel.show = true;
@@ -822,7 +925,7 @@ defineSuite([
         riggedFigureModel.zoomTo();
 
         for (var i = 0; i < 6; ++i) {
-            var t = time.addSeconds(0.25 * i);
+            var t = JulianDate.addSeconds(time, 0.25 * i, new JulianDate());
             expect(scene.renderForSpecs(t)).toEqual([0, 0, 0, 255]);
 
             riggedFigureModel.show = true;

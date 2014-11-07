@@ -5,11 +5,9 @@ define([
         '../../Core/defined',
         '../../Core/defineProperties',
         '../../Core/DeveloperError',
-        '../../Core/Ellipsoid',
         '../../Core/jsonp',
         '../../Core/Matrix4',
         '../../Core/Rectangle',
-        '../../Scene/SceneMode',
         '../../ThirdParty/knockout',
         '../../ThirdParty/when',
         '../createCommand'
@@ -19,11 +17,9 @@ define([
         defined,
         defineProperties,
         DeveloperError,
-        Ellipsoid,
         jsonp,
         Matrix4,
         Rectangle,
-        SceneMode,
         knockout,
         when,
         createCommand) {
@@ -44,8 +40,7 @@ define([
      *        written to the console reminding you that you must create and supply a Bing Maps
      *        key as soon as possible.  Please do not deploy an application that uses
      *        this widget without creating a separate key for your application.
-     * @param {Ellipsoid} [options.ellipsoid=Ellipsoid.WGS84] The Scene's primary ellipsoid.
-     * @param {Number} [options.flightDuration=1500] The duration of the camera flight to an entered location, in milliseconds.
+     * @param {Number} [options.flightDuration=1.5] The duration of the camera flight to an entered location, in seconds.
      */
     var GeocoderViewModel = function(options) {
         //>>includeStart('debug', pragmas.debug);
@@ -61,8 +56,7 @@ define([
 
         this._key = BingMapsApi.getKey(options.key);
         this._scene = options.scene;
-        this._ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84);
-        this._flightDuration = defaultValue(options.flightDuration, 1500);
+        this._flightDuration = defaultValue(options.flightDuration, 1.5);
         this._searchText = '';
         this._isSearchInProgress = false;
         this._geocodeInProgress = undefined;
@@ -115,11 +109,11 @@ define([
         });
 
         /**
-         * Gets or sets the the duration of the camera flight in milliseconds.
+         * Gets or sets the the duration of the camera flight in seconds.
          * A value of zero causes the camera to instantly switch to the geocoding location.
          *
          * @type {Number}
-         * @default 1500
+         * @default 1.5
          */
         this.flightDuration = undefined;
         knockout.defineProperty(this, 'flightDuration', {
@@ -172,18 +166,6 @@ define([
         scene : {
             get : function() {
                 return this._scene;
-            }
-        },
-
-        /**
-         * Gets the ellipsoid to be viewed.
-         * @memberof GeocoderViewModel.prototype
-         *
-         * @type {Ellipsoid}
-         */
-        ellipsoid : {
-            get : function() {
-                return this._ellipsoid;
             }
         },
 
@@ -256,10 +238,6 @@ define([
             viewModel._scene.camera.flyTo({
                 destination : position,
                 duration : viewModel._flightDuration,
-                onComplete : function() {
-                    var screenSpaceCameraController = viewModel._scene.screenSpaceCameraController;
-                    screenSpaceCameraController.ellipsoid = viewModel._ellipsoid;
-                },
                 endTransform : Matrix4.IDENTITY,
                 convert : false
             });

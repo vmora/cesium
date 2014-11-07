@@ -8,6 +8,7 @@ defineSuite([
         'Core/Math',
         'Core/TerrainData',
         'Core/TerrainMesh',
+        'Specs/waitsForPromise',
         'ThirdParty/when'
     ], function(
         QuantizedMeshTerrainData,
@@ -18,6 +19,7 @@ defineSuite([
         CesiumMath,
         TerrainData,
         TerrainMesh,
+        waitsForPromise,
         when) {
      "use strict";
      /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
@@ -143,6 +145,81 @@ defineSuite([
              });
          });
 
+         it('oct-encoded normals works for all four children of a simple quad', function() {
+             var data = new QuantizedMeshTerrainData({
+                 minimumHeight : 0.0,
+                 maximumHeight : 4.0,
+                 quantizedVertices : new Uint16Array([ // order is sw nw se ne
+                                                      // u
+                                                      0, 0, 32767, 32767,
+                                                      // v
+                                                      0, 32767, 0, 32767,
+                                                      // heights
+                                                      32767 / 4.0, 2.0 * 32767 / 4.0, 3.0 * 32767 / 4.0, 32767
+                                                  ]),
+                 encodedNormals : new Uint8Array([
+                                                  // fun property of oct-encoded normals: the octrahedron is projected onto a plane
+                                                  // and unfolded into a unit square.  The 4 corners of this unit square are encoded values
+                                                  // of the same Cartesian normal, vec3(0.0, 0.0, 1.0).
+                                                  // Therefore, all 4 normals below are actually oct-encoded representations of vec3(0.0, 0.0, 1.0)
+                                                  255, 0,     // sw
+                                                  255, 255,   // nw
+                                                  255, 0,   // se
+                                                  255, 255  // ne
+                                                  ]),
+                 indices : new Uint16Array([
+                                                0, 3, 1,
+                                                0, 2, 3
+                                                ]),
+                 boundingSphere : new BoundingSphere(),
+                 horizonOcclusionPoint : new Cartesian3(),
+                 westIndices : [],
+                 southIndices : [],
+                 eastIndices : [],
+                 northIndices : [],
+                 westSkirtHeight : 1.0,
+                 southSkirtHeight : 1.0,
+                 eastSkirtHeight : 1.0,
+                 northSkirtHeight : 1.0,
+                 childTileMask : 15
+             });
+
+             var tilingScheme = new GeographicTilingScheme();
+
+             var swPromise = data.upsample(tilingScheme, 0, 0, 0, 0, 0, 1);
+             var sePromise = data.upsample(tilingScheme, 0, 0, 0, 1, 0, 1);
+             var nwPromise = data.upsample(tilingScheme, 0, 0, 0, 0, 1, 1);
+             var nePromise = data.upsample(tilingScheme, 0, 0, 0, 1, 1, 1);
+
+             var upsampleResults;
+
+             when.all([swPromise, sePromise, nwPromise, nePromise], function(results) {
+                 upsampleResults = results;
+             });
+
+             waitsFor(function() {
+                 return defined(upsampleResults);
+             });
+
+             runs(function() {
+                 expect(upsampleResults.length).toBe(4);
+
+                 for (var i = 0; i < upsampleResults.length; ++i) {
+                     var upsampled = upsampleResults[i];
+                     expect(upsampled).toBeDefined();
+
+                     var encodedNormals = upsampled._encodedNormals;
+
+                     expect(encodedNormals.length).toBe(8);
+
+                     // All 4 normals should remain oct-encoded representations of vec3(0.0, 0.0, -1.0)
+                     for (var n = 0; n < encodedNormals.length; ++n) {
+                         expect(encodedNormals[i]).toBe(255);
+                     }
+                 }
+             });
+         });
+
          it('works for a quad with an extra vertex in the northwest child', function() {
              var data = new QuantizedMeshTerrainData({
                  minimumHeight : 0.0,
@@ -175,19 +252,7 @@ defineSuite([
              });
 
              var tilingScheme = new GeographicTilingScheme();
-
-             var upsampledPromise = data.upsample(tilingScheme, 0, 0, 0, 0, 0, 1);
-
-             var upsampled;
-             when(upsampledPromise, function(result) {
-                 upsampled = result;
-             });
-
-             waitsFor(function() {
-                 return defined(upsampled);
-             });
-
-             runs(function() {
+             waitsForPromise(data.upsample(tilingScheme, 0, 0, 0, 0, 0, 1), function(upsampled) {
                  var uBuffer = upsampled._uValues;
                  var vBuffer = upsampled._vValues;
                  var ib = upsampled._indices;
@@ -288,19 +353,7 @@ defineSuite([
          });
 
          it('creates specified vertices plus skirt vertices', function() {
-             var promise = data.createMesh(tilingScheme, 0, 0, 0);
-             expect(promise).toBeDefined();
-
-             var mesh;
-             when(promise, function(meshResult) {
-                 mesh = meshResult;
-             });
-
-             waitsFor(function() {
-                 return defined(mesh);
-             }, 'mesh to be created');
-
-             runs(function() {
+             waitsForPromise(data.createMesh(tilingScheme, 0, 0, 0), function(mesh) {
                  expect(mesh).toBeInstanceOf(TerrainMesh);
                  expect(mesh.vertices.length).toBe(12 * 6); // 4 regular vertices, 8 skirt vertices.
                  expect(mesh.indices.length).toBe(10 * 3); // 2 regular triangles, 8 skirt triangles.
@@ -308,6 +361,45 @@ defineSuite([
                  expect(mesh.maximumHeight).toBe(data._maximumHeight);
                  expect(mesh.boundingSphere3D).toEqual(data._boundingSphere);
              });
+         });
+     });
+
+     it('createMesh requires 32bit indices for large meshes', function() {
+         var tilingScheme = new GeographicTilingScheme();
+         var quantizedVertices = [];
+         var i;
+         for (i = 0; i < 65 * 1024; i++) {
+             quantizedVertices.push(i % 32767); // u
+         }
+         for (i = 0; i < 65 * 1024; i++) {
+             quantizedVertices.push(Math.floor(i / 32767)); // v
+         }
+         for (i = 0; i < 65 * 1024; i++) {
+             quantizedVertices.push(0.0);       // height
+         }
+         var data = new QuantizedMeshTerrainData({
+             minimumHeight : 0.0,
+             maximumHeight : 4.0,
+             quantizedVertices : new Uint16Array(quantizedVertices),
+             indices : new Uint32Array([ 0, 3, 1,
+                                         0, 2, 3,
+                                         65000, 65002, 65003]),
+             boundingSphere : new BoundingSphere(),
+             horizonOcclusionPoint : new Cartesian3(),
+             westIndices : [0, 1],
+             southIndices : [0, 1],
+             eastIndices : [2, 3],
+             northIndices : [1, 3],
+             westSkirtHeight : 1.0,
+             southSkirtHeight : 1.0,
+             eastSkirtHeight : 1.0,
+             northSkirtHeight : 1.0,
+             childTileMask : 15
+         });
+
+         waitsForPromise(data.createMesh(tilingScheme, 0, 0, 0), function(mesh) {
+             expect(mesh).toBeInstanceOf(TerrainMesh);
+             expect(mesh.indices.BYTES_PER_ELEMENT).toBe(4);
          });
      });
 
@@ -320,7 +412,7 @@ defineSuite([
              rectangle = tilingScheme.tileXYToRectangle(7, 6, 5);
          });
 
-         it('returns undefined if given a position outside the mesh', function() {
+         it('clamps coordinates if given a position outside the mesh', function() {
              var mesh = new QuantizedMeshTerrainData({
                  minimumHeight : 0.0,
                  maximumHeight : 4.0,
@@ -349,7 +441,7 @@ defineSuite([
                  childTileMask : 15
              });
 
-             expect(mesh.interpolateHeight(rectangle, 0.0, 0.0)).toBeUndefined();
+             expect(mesh.interpolateHeight(rectangle, 0.0, 0.0)).toBe(mesh.interpolateHeight(rectangle, rectangle.east, rectangle.south));
          });
 
          it('returns a height interpolated from the correct triangle', function() {

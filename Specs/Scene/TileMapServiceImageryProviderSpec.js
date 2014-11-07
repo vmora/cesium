@@ -1,9 +1,12 @@
 /*global defineSuite*/
 defineSuite([
         'Scene/TileMapServiceImageryProvider',
+        'Core/Cartesian2',
+        'Core/Cartographic',
         'Core/DefaultProxy',
         'Core/defined',
-        'Core/jsonp',
+        'Core/GeographicProjection',
+        'Core/GeographicTilingScheme',
         'Core/loadImage',
         'Core/loadWithXhr',
         'Core/Math',
@@ -14,12 +17,15 @@ defineSuite([
         'Scene/ImageryLayer',
         'Scene/ImageryProvider',
         'Scene/ImageryState',
-        'ThirdParty/when'
+        'Specs/waitsForPromise'
     ], function(
         TileMapServiceImageryProvider,
+        Cartesian2,
+        Cartographic,
         DefaultProxy,
         defined,
-        jsonp,
+        GeographicProjection,
+        GeographicTilingScheme,
         loadImage,
         loadWithXhr,
         CesiumMath,
@@ -30,12 +36,11 @@ defineSuite([
         ImageryLayer,
         ImageryProvider,
         ImageryState,
-        when) {
+        waitsForPromise) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     afterEach(function() {
-        jsonp.loadAndExecuteScript = jsonp.defaultLoadAndExecuteScript;
         loadImage.createImage = loadImage.defaultCreateImage;
         loadWithXhr.load = loadWithXhr.defaultLoad;
     });
@@ -75,18 +80,17 @@ defineSuite([
         }, 'imagery provider to become ready');
 
         runs(function() {
-            var calledLoadImage = false;
-            loadImage.createImage = function(url, crossOrigin, deferred) {
-                var doubleSlashIndex = url.indexOf('//');
-                expect(doubleSlashIndex).toBeLessThan(0);
+            spyOn(loadImage, 'createImage').andCallFake(function(url, crossOrigin, deferred) {
+                expect(url).not.toContain('//');
 
-                calledLoadImage = true;
-                deferred.resolve();
-                return undefined;
-            };
+                // Just return any old image.
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            });
 
-            provider.requestImage(0, 0, 0);
-            expect(calledLoadImage).toEqual(true);
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(loadImage.createImage).toHaveBeenCalled();
+                expect(image).toBeInstanceOf(Image);
+            });
         });
     });
 
@@ -100,18 +104,17 @@ defineSuite([
         }, 'imagery provider to become ready');
 
         runs(function() {
-            var calledLoadImage = false;
-            loadImage.createImage = function(url, crossOrigin, deferred) {
-                var index = url.indexOf('made/up/tms/server/');
-                expect(index).toBeGreaterThan(-1);
+            spyOn(loadImage, 'createImage').andCallFake(function(url, crossOrigin, deferred) {
+                expect(url).toContain('made/up/tms/server/');
 
-                calledLoadImage = true;
-                deferred.resolve();
-                return undefined;
-            };
+                // Just return any old image.
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            });
 
-            provider.requestImage(0, 0, 0);
-            expect(calledLoadImage).toEqual(true);
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(loadImage.createImage).toHaveBeenCalled();
+                expect(image).toBeInstanceOf(Image);
+            });
         });
     });
 
@@ -126,8 +129,6 @@ defineSuite([
             return provider.ready;
         }, 'imagery provider to become ready');
 
-        var tile000Image;
-
         runs(function() {
             expect(provider.tileWidth).toEqual(256);
             expect(provider.tileHeight).toEqual(256);
@@ -135,22 +136,15 @@ defineSuite([
             expect(provider.tilingScheme).toBeInstanceOf(WebMercatorTilingScheme);
             expect(provider.rectangle).toEqual(new WebMercatorTilingScheme().rectangle);
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            spyOn(loadImage, 'createImage').andCallFake(function(url, crossOrigin, deferred) {
                 // Just return any old image.
-                return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
-            };
-
-            when(provider.requestImage(0, 0, 0), function(image) {
-                tile000Image = image;
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
             });
-        });
 
-        waitsFor(function() {
-            return defined(tile000Image);
-        }, 'requested tile to be loaded');
-
-        runs(function() {
-            expect(tile000Image).toBeInstanceOf(Image);
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(loadImage.createImage).toHaveBeenCalled();
+                expect(image).toBeInstanceOf(Image);
+            });
         });
     });
 
@@ -180,28 +174,20 @@ defineSuite([
             return provider.ready;
         }, 'imagery provider to become ready');
 
-        var tile000Image;
-
         runs(function() {
-            loadImage.createImage = function(url, crossOrigin, deferred) {
+            expect(provider.proxy).toEqual(proxy);
+
+            spyOn(loadImage, 'createImage').andCallFake(function(url, crossOrigin, deferred) {
                 expect(url.indexOf(proxy.getURL('made/up/tms/server'))).toEqual(0);
-                expect(provider.proxy).toEqual(proxy);
 
                 // Just return any old image.
-                return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
-            };
-
-            when(provider.requestImage(0, 0, 0), function(image) {
-                tile000Image = image;
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
             });
-        });
 
-        waitsFor(function() {
-            return defined(tile000Image);
-        }, 'requested tile to be loaded');
-
-        runs(function() {
-            expect(tile000Image).toBeInstanceOf(Image);
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(loadImage.createImage).toHaveBeenCalled();
+                expect(image).toBeInstanceOf(Image);
+            });
         });
     });
 
@@ -224,16 +210,17 @@ defineSuite([
             expect(provider.rectangle).toEqual(rectangle);
             expect(provider.tileDiscardPolicy).toBeUndefined();
 
-            var calledLoadImage = false;
-            loadImage.createImage = function(url, crossOrigin, deferred) {
-                expect(url.indexOf('/0/0/0')).not.toBeLessThan(0);
-                calledLoadImage = true;
-                deferred.resolve();
-                return undefined;
-            };
+            spyOn(loadImage, 'createImage').andCallFake(function(url, crossOrigin, deferred) {
+                expect(url).toContain('/0/0/0');
 
-            provider.requestImage(0, 0, 0);
-            expect(calledLoadImage).toEqual(true);
+                // Just return any old image.
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            });
+
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(loadImage.createImage).toHaveBeenCalled();
+                expect(image).toBeInstanceOf(Image);
+            });
         });
     });
 
@@ -269,14 +256,15 @@ defineSuite([
         });
 
         loadImage.createImage = function(url, crossOrigin, deferred) {
-            // Succeed after 2 tries
             if (tries === 2) {
-                // valid URL
-                return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+                // Succeed after 2 tries
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            } else {
+                // fail
+                setTimeout(function() {
+                    deferred.reject();
+                }, 1);
             }
-
-            // invalid URL
-            return loadImage.defaultCreateImage(url, crossOrigin, deferred);
         };
 
         waitsFor(function() {
@@ -408,7 +396,7 @@ defineSuite([
         });
     });
 
-    it('Handles XML with casing differences', function() {
+    it('handles XML with casing differences', function() {
         loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
             var parser = new DOMParser();
             var xmlString =
@@ -439,6 +427,221 @@ defineSuite([
         runs(function() {
             expect(provider.maximumLevel).toBe(8);
             expect(provider.minimumLevel).toBe(7);
+        });
+    });
+
+    it('supports the global-mercator profile with a non-flipped, mercator bounding box', function() {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            var parser = new DOMParser();
+            var xmlString =
+                '<TileMap version="1.0.0" tilemapservice="http://tms.osgeo.org/1.0.0">' +
+                '   <Title/>' +
+                '   <Abstract/>' +
+                '   <SRS>EPSG:900913</SRS>' +
+                '   <BoundingBox minx="-11877789.66764229300000" miny="1707163.75952051670000" maxx="-4696205.45407573510000" maxy="7952627.07365330120000"/>' +
+                '   <Origin x="-20037508.34278924400000" y="-20037508.34278924400000"/>' +
+                '   <TileFormat width="256" height="256" mime-type="image/png" extension="png"/>' +
+                '   <TileSets profile="global-mercator">' +
+                '       <TileSet href="2" units-per-pixel="39135.75848201024200" order="2"/>' +
+                '       <TileSet href="3" units-per-pixel="19567.87924100512100" order="3"/>' +
+                '   </TileSets>' +
+                '</TileMap>';
+            var xml = parser.parseFromString(xmlString, "text/xml");
+            deferred.resolve(xml);
+        };
+
+        var provider = new TileMapServiceImageryProvider({
+            url : 'made/up/tms/server'
+        });
+
+        waitsFor(function() {
+            return provider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            expect(provider.tilingScheme).toBeInstanceOf(WebMercatorTilingScheme);
+            expect(provider.tilingScheme.projection).toBeInstanceOf(WebMercatorProjection);
+
+            var projection = provider.tilingScheme.projection;
+            var expectedSW = projection.unproject(new Cartesian2(-11877789.66764229300000, 1707163.75952051670000));
+            var expectedNE = projection.unproject(new Cartesian2(-4696205.45407573510000, 7952627.07365330120000));
+
+            expect(provider.rectangle.west).toEqual(expectedSW.longitude);
+            expect(provider.rectangle.south).toEqual(expectedSW.latitude);
+            expect(provider.rectangle.east).toEqual(expectedNE.longitude);
+            expect(provider.rectangle.north).toEqual(expectedNE.latitude);
+        });
+    });
+
+    it('supports the global-geodetic profile with a non-flipped, geographic bounding box', function() {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            var parser = new DOMParser();
+            var xmlString =
+                '<TileMap version="1.0.0" tilemapservice="http://tms.osgeo.org/1.0.0">' +
+                '   <Title/>' +
+                '   <Abstract/>' +
+                '   <SRS>EPSG:4326</SRS>' +
+                '   <BoundingBox minx="-123.0" miny="-10.0" maxx="-110.0" maxy="11.0"/>' +
+                '   <Origin x="-180.0" y="-90.0"/>' +
+                '   <TileFormat width="256" height="256" mime-type="image/png" extension="png"/>' +
+                '   <TileSets profile="global-geodetic">' +
+                '       <TileSet href="2" units-per-pixel="39135.75848201024200" order="2"/>' +
+                '       <TileSet href="3" units-per-pixel="19567.87924100512100" order="3"/>' +
+                '   </TileSets>' +
+                '</TileMap>';
+            var xml = parser.parseFromString(xmlString, "text/xml");
+            deferred.resolve(xml);
+        };
+
+        var provider = new TileMapServiceImageryProvider({
+            url : 'made/up/tms/server'
+        });
+
+        waitsFor(function() {
+            return provider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            expect(provider.tilingScheme).toBeInstanceOf(GeographicTilingScheme);
+            expect(provider.tilingScheme.projection).toBeInstanceOf(GeographicProjection);
+
+            var projection = provider.tilingScheme.projection;
+            var expectedSW = Cartographic.fromDegrees(-123.0, -10.0);
+            var expectedNE = Cartographic.fromDegrees(-110.0, 11.0);
+
+            expect(provider.rectangle.west).toEqual(expectedSW.longitude);
+            expect(provider.rectangle.south).toEqual(expectedSW.latitude);
+            expect(provider.rectangle.east).toEqual(expectedNE.longitude);
+            expect(provider.rectangle.north).toEqual(expectedNE.latitude);
+        });
+    });
+
+    it('supports the old mercator profile with a flipped, geographic bounding box', function() {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            var parser = new DOMParser();
+            var xmlString =
+                '<TileMap version="1.0.0" tilemapservice="http://tms.osgeo.org/1.0.0">' +
+                '   <Title/>' +
+                '   <Abstract/>' +
+                '   <SRS>EPSG:900913</SRS>' +
+                '   <BoundingBox minx="-10.0" miny="-123.0" maxx="11.0" maxy="-110.0"/>' +
+                '   <Origin x="-90.0" y="-180.0"/>' +
+                '   <TileFormat width="256" height="256" mime-type="image/png" extension="png"/>' +
+                '   <TileSets profile="mercator">' +
+                '       <TileSet href="2" units-per-pixel="39135.75848201024200" order="2"/>' +
+                '       <TileSet href="3" units-per-pixel="19567.87924100512100" order="3"/>' +
+                '   </TileSets>' +
+                '</TileMap>';
+            var xml = parser.parseFromString(xmlString, "text/xml");
+            deferred.resolve(xml);
+        };
+
+        var provider = new TileMapServiceImageryProvider({
+            url : 'made/up/tms/server'
+        });
+
+        waitsFor(function() {
+            return provider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            expect(provider.tilingScheme).toBeInstanceOf(WebMercatorTilingScheme);
+            expect(provider.tilingScheme.projection).toBeInstanceOf(WebMercatorProjection);
+
+            var projection = provider.tilingScheme.projection;
+            var expectedSW = Cartographic.fromDegrees(-123.0, -10.0);
+            var expectedNE = Cartographic.fromDegrees(-110.0, 11.0);
+
+            expect(provider.rectangle.west).toEqual(expectedSW.longitude);
+            expect(provider.rectangle.south).toEqual(expectedSW.latitude);
+            expect(provider.rectangle.east).toEqual(expectedNE.longitude);
+            expect(provider.rectangle.north).toEqual(expectedNE.latitude);
+        });
+    });
+
+    it('supports the old geodetic profile with a flipped, geographic bounding box', function() {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            var parser = new DOMParser();
+            var xmlString =
+                '<TileMap version="1.0.0" tilemapservice="http://tms.osgeo.org/1.0.0">' +
+                '   <Title/>' +
+                '   <Abstract/>' +
+                '   <SRS>EPSG:4326</SRS>' +
+                '   <BoundingBox minx="-10.0" miny="-123.0" maxx="11.0" maxy="-110.0"/>' +
+                '   <Origin x="-90.0" y="-180.0"/>' +
+                '   <TileFormat width="256" height="256" mime-type="image/png" extension="png"/>' +
+                '   <TileSets profile="geodetic">' +
+                '       <TileSet href="2" units-per-pixel="39135.75848201024200" order="2"/>' +
+                '       <TileSet href="3" units-per-pixel="19567.87924100512100" order="3"/>' +
+                '   </TileSets>' +
+                '</TileMap>';
+            var xml = parser.parseFromString(xmlString, "text/xml");
+            deferred.resolve(xml);
+        };
+
+        var provider = new TileMapServiceImageryProvider({
+            url : 'made/up/tms/server'
+        });
+
+        waitsFor(function() {
+            return provider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            expect(provider.tilingScheme).toBeInstanceOf(GeographicTilingScheme);
+            expect(provider.tilingScheme.projection).toBeInstanceOf(GeographicProjection);
+
+            var projection = provider.tilingScheme.projection;
+            var expectedSW = Cartographic.fromDegrees(-123.0, -10.0);
+            var expectedNE = Cartographic.fromDegrees(-110.0, 11.0);
+
+            expect(provider.rectangle.west).toEqual(expectedSW.longitude);
+            expect(provider.rectangle.south).toEqual(expectedSW.latitude);
+            expect(provider.rectangle.east).toEqual(expectedNE.longitude);
+            expect(provider.rectangle.north).toEqual(expectedNE.latitude);
+        });
+    });
+
+    it('raises an error if tilemapresource.xml specifies an unsupported profile', function() {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            // We can't resolve the promise immediately, because then the error would be raised
+            // before we could subscribe to it.  This a problem particular to tests.
+            setTimeout(function() {
+                var parser = new DOMParser();
+                var xmlString =
+                    '<TileMap version="1.0.0" tilemapservice="http://tms.osgeo.org/1.0.0">' +
+                    '   <Title/>' +
+                    '   <Abstract/>' +
+                    '   <SRS>EPSG:4326</SRS>' +
+                    '   <BoundingBox minx="-10.0" miny="-123.0" maxx="11.0" maxy="-110.0"/>' +
+                    '   <Origin x="-90.0" y="-180.0"/>' +
+                    '   <TileFormat width="256" height="256" mime-type="image/png" extension="png"/>' +
+                    '   <TileSets profile="foobar">' +
+                    '       <TileSet href="2" units-per-pixel="39135.75848201024200" order="2"/>' +
+                    '       <TileSet href="3" units-per-pixel="19567.87924100512100" order="3"/>' +
+                    '   </TileSets>' +
+                    '</TileMap>';
+                var xml = parser.parseFromString(xmlString, "text/xml");
+                deferred.resolve(xml);
+            }, 1);
+        };
+
+        var provider = new TileMapServiceImageryProvider({
+            url : 'made/up/tms/server'
+        });
+
+        var errorRaised = false;
+        provider.errorEvent.addEventListener(function(e) {
+            expect(e.message).toContain('unsupported profile');
+            errorRaised = true;
+        });
+
+        waitsFor(function() {
+            return errorRaised;
+        }, 'error to be raised');
+
+        runs(function() {
+            expect(errorRaised).toBe(true);
         });
     });
 });

@@ -2,11 +2,15 @@
 define([
         'Core/clone',
         'Core/defaultValue',
+        'Core/defined',
+        'Core/queryToObject',
         'Scene/Scene',
         'Specs/createCanvas'
     ], function(
         clone,
         defaultValue,
+        defined,
+        queryToObject,
         Scene,
         createCanvas) {
     "use strict";
@@ -22,6 +26,15 @@ define([
         contextOptions.webgl.antialias = defaultValue(contextOptions.webgl.antialias, false);
 
         var scene = new Scene(options);
+
+        var parameters = queryToObject(window.location.search.substring(1));
+        if (defined(parameters.webglValidation)) {
+            var context = scene.context;
+            context.validateShaderProgram = true;
+            context.validateFramebuffer = true;
+            context.logShaderCompilation = true;
+            context.throwOnWebGLError = true;
+        }
 
         // Add functions for test
         scene.renderForSpecs = function(time) {
