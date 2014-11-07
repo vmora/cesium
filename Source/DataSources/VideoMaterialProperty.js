@@ -199,6 +199,8 @@ define(['../Core/Iso8601',
 
                 var that = this;
                 video.addEventListener("loadeddata", function() {
+                    //video.play();
+                    //that._live = true;
                     var seekFunction = createSeekFunction(that, VideoMaterialProperty.context, video, result);
                     that._seekFunction = seekFunction;
                     video.addEventListener("seeked", that._seekFunction, false);
@@ -208,6 +210,16 @@ define(['../Core/Iso8601',
                 video.src = url;
                 video.load();
             }
+
+//            if (this.__live) {
+//                if (!defined(this._texture)) {
+//                    this._texture = VideoMaterialProperty.context.createTexture2D({
+//                        source : this._videoElement
+//                    });
+//                    result.image = this._texture;
+//                }
+//                this._texture.copyFrom(this._videoElement);
+//            }
         }
 
         return result;
