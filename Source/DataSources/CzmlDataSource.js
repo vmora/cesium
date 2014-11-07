@@ -65,8 +65,8 @@ define([
         './StripeOrientation',
         './TimeIntervalCollectionPositionProperty',
         './TimeIntervalCollectionProperty',
-        './VideoMaterialProperty',
-        './WallGraphics'
+        './WallGraphics',
+        './VideoMaterialProperty'
     ], function(
         Cartesian2,
         Cartesian3,

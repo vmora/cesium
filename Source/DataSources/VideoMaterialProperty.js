@@ -4,8 +4,9 @@ define(['../Core/Iso8601',
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/Event',
+        '../Core/JulianDate',
         './ConstantProperty',
-        './createDynamicPropertyDescriptor',
+        './createPropertyDescriptor',
         './Property'
     ], function(
         Iso8601,
@@ -13,8 +14,9 @@ define(['../Core/Iso8601',
         defined,
         defineProperties,
         Event,
+        JulianDate,
         ConstantProperty,
-        createDynamicPropertyDescriptor,
+        createPropertyDescriptor,
         Property) {
     "use strict";
 
@@ -33,7 +35,7 @@ define(['../Core/Iso8601',
             //before setting the currentTime, but if there are no seekable
             //segments, then this code will have no affect, so the net result
             //seems to be the same.
-            var videoTime = that._cachedStartTime.getSecondsDifference(that._time);
+            var videoTime = JulianDate.secondsDifference(that._time, that._cachedStartTime);
             videoTime = videoTime * that._cachedSpeed;
             if (that._cachedLoop) {
                 videoTime = videoTime % duration;
@@ -121,31 +123,31 @@ define(['../Core/Iso8601',
          * A string {@link Property} which is the url of the desired video.
          * @type {Property}
          */
-        video : createDynamicPropertyDescriptor('video'),
+        video : createPropertyDescriptor('video'),
         /**
          * A {@link Cartesian2} {@link Property} which determines the number of times the video repeats in each direction.
          * @type {Property}
          * @default new ConstantProperty(new Cartesian2(1, 1))
          */
-        repeat : createDynamicPropertyDescriptor('repeat'),
+        repeat : createPropertyDescriptor('repeat'),
         /**
          * A {@link JulianDate} {@link Property} which determines the simulation start time of the video.
          * @type {Property}
          * @default new ConstantProperty(new Cartesian2(1, 1))
          */
-        startTime : createDynamicPropertyDescriptor('startTime'),
+        startTime : createPropertyDescriptor('startTime'),
         /**
          * A Boolean {@link Property} which determines whether or not the video should loop;
          * @type {Property}
          * @default new ConstantProperty(true)
          */
-        loop : createDynamicPropertyDescriptor('loop'),
+        loop : createPropertyDescriptor('loop'),
         /**
          * A Number {@link Property} which determines the playback rate of the video.
          * @type {Property}
          * @default new ConstantProperty(true)
          */
-        speed : createDynamicPropertyDescriptor('speed')
+        speed : createPropertyDescriptor('speed')
     });
 
     /**
@@ -169,7 +171,7 @@ define(['../Core/Iso8601',
      *
      * @exception {DeveloperError} time is required.
      */
-    VideoMaterialProperty.prototype.getValue = function(time, result, context) {
+    VideoMaterialProperty.prototype.getValue = function(time, result) {
         if (!defined(result)) {
             result = {};
         }
@@ -197,7 +199,7 @@ define(['../Core/Iso8601',
 
                 var that = this;
                 video.addEventListener("loadeddata", function() {
-                    var seekFunction = createSeekFunction(that, context, video, result);
+                    var seekFunction = createSeekFunction(that, VideoMaterialProperty.context, video, result);
                     that._seekFunction = seekFunction;
                     video.addEventListener("seeked", that._seekFunction, false);
                     seekFunction();
