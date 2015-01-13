@@ -1,24 +1,16 @@
 /*global define*/
 define([
-        '../Core/SphereGeometry',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/defined',
+        '../Core/SphereGeometry'
     ], function(
-        SphereGeometry,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        defined,
+        SphereGeometry) {
     "use strict";
 
-    function createSphereGeometry(parameters, transferableObjects) {
-        var sphereGeometry = parameters.geometry;
-        var geometry = SphereGeometry.createGeometry(sphereGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
-    }
-
-    return createTaskProcessorWorker(createSphereGeometry);
+    return function(sphereGeometry, offset) {
+        if (defined(offset)) {
+            sphereGeometry = SphereGeometry.unpack(sphereGeometry, offset);
+        }
+        return SphereGeometry.createGeometry(sphereGeometry);
+    };
 });

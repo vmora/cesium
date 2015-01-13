@@ -1,38 +1,34 @@
 /*global defineSuite*/
 defineSuite([
-         'Scene/BingMapsImageryProvider',
-         'Core/DefaultProxy',
-         'Core/defined',
-         'Core/FeatureDetection',
-         'Core/jsonp',
-         'Core/loadImage',
-         'Core/loadWithXhr',
-         'Scene/BingMapsStyle',
-         'Scene/DiscardMissingTileImagePolicy',
-         'Scene/Imagery',
-         'Scene/ImageryLayer',
-         'Scene/ImageryProvider',
-         'Scene/ImageryState',
-         'Scene/NeverTileDiscardPolicy',
-         'Scene/WebMercatorTilingScheme',
-         'ThirdParty/when'
-     ], function(
-         BingMapsImageryProvider,
-         DefaultProxy,
-         defined,
-         FeatureDetection,
-         jsonp,
-         loadImage,
-         loadWithXhr,
-         BingMapsStyle,
-         DiscardMissingTileImagePolicy,
-         Imagery,
-         ImageryLayer,
-         ImageryProvider,
-         ImageryState,
-         NeverTileDiscardPolicy,
-         WebMercatorTilingScheme,
-         when) {
+        'Scene/BingMapsImageryProvider',
+        'Core/DefaultProxy',
+        'Core/defined',
+        'Core/jsonp',
+        'Core/loadImage',
+        'Core/loadWithXhr',
+        'Core/WebMercatorTilingScheme',
+        'Scene/BingMapsStyle',
+        'Scene/DiscardMissingTileImagePolicy',
+        'Scene/Imagery',
+        'Scene/ImageryLayer',
+        'Scene/ImageryProvider',
+        'Scene/ImageryState',
+        'Specs/waitsForPromise'
+    ], function(
+        BingMapsImageryProvider,
+        DefaultProxy,
+        defined,
+        jsonp,
+        loadImage,
+        loadWithXhr,
+        WebMercatorTilingScheme,
+        BingMapsStyle,
+        DiscardMissingTileImagePolicy,
+        Imagery,
+        ImageryLayer,
+        ImageryProvider,
+        ImageryState,
+        waitsForPromise) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -88,179 +84,219 @@ defineSuite([
         expect(constructWithoutServer).toThrowDeveloperError();
     });
 
-    it('can provide a root tile', function() {
-        var url = 'http://fake.fake.invalid';
-        var mapStyle = BingMapsStyle.COLLINS_BART;
-        var metadataUrl = url + '/REST/v1/Imagery/Metadata/' + mapStyle.imagerySetName + '?key=';
+    function createFakeMetadataResponse(mapStyle) {
+        var stylePrefix = 'a';
+        switch (mapStyle) {
+        case BingMapsStyle.AERIAL_WITH_LABELS:
+            stylePrefix = 'h';
+            break;
+        case BingMapsStyle.ROAD:
+            stylePrefix = 'r';
+            break;
+        }
 
-        jsonp.loadAndExecuteScript = function(url, functionName) {
-            expect(url.indexOf(metadataUrl) === 0).toEqual(true);
-            setTimeout(function() {
-                window[functionName]({
-                    "authenticationResultCode" : "ValidCredentials",
-                    "brandLogoUri" : "http:\/\/dev.virtualearth.net\/Branding\/logo_powered_by.png",
-                    "copyright" : "Copyright © 2012 Microsoft and its suppliers. All rights reserved. This API cannot be accessed and the content and any results may not be used, reproduced or transmitted in any manner without express written permission from Microsoft Corporation.",
-                    "resourceSets" : [{
-                        "estimatedTotal" : 1,
-                        "resources" : [{
-                            "__type" : "ImageryMetadata:http:\/\/schemas.microsoft.com\/search\/local\/ws\/rest\/v1",
-                            "imageHeight" : 256,
-                            "imageUrl" : "http:\/\/fake.{subdomain}.tiles.fake.invalid\/tiles\/r{quadkey}?g=1062&lbl=l1&productSet=mmCB",
-                            "imageUrlSubdomains" : ["t0"],
-                            "imageWidth" : 256,
-                            "imageryProviders" : null,
-                            "vintageEnd" : null,
-                            "vintageStart" : null,
+        return {
+            "authenticationResultCode" : "ValidCredentials",
+            "brandLogoUri" : "http:\/\/dev.virtualearth.net\/Branding\/logo_powered_by.png",
+            "copyright" : "Copyright © 2014 Microsoft and its suppliers. All rights reserved. This API cannot be accessed and the content and any results may not be used, reproduced or transmitted in any manner without express written permission from Microsoft Corporation.",
+            "resourceSets" : [{
+                "estimatedTotal" : 1,
+                "resources" : [{
+                    "__type" : "ImageryMetadata:http:\/\/schemas.microsoft.com\/search\/local\/ws\/rest\/v1",
+                    "imageHeight" : 256,
+                    "imageUrl" : "http:\/\/ecn.{subdomain}.tiles.virtualearth.net.fake.invalid\/tiles\/" + stylePrefix + "{quadkey}.jpeg?g=3031&mkt={culture}",
+                    "imageUrlSubdomains" : ["t0", "t1", "t2", "t3"],
+                    "imageWidth" : 256,
+                    "imageryProviders" : [{
+                        "attribution" : "© 2014 DigitalGlobe",
+                        "coverageAreas" : [{
+                            "bbox" : [-67, -179.99, 27, 0],
                             "zoomMax" : 21,
+                            "zoomMin" : 14
+                        }, {
+                            "bbox" : [27, -179.99, 87, -126.5],
+                            "zoomMax" : 21,
+                            "zoomMin" : 14
+                        }, {
+                            "bbox" : [48.4, -126.5, 87, -5.75],
+                            "zoomMax" : 21,
+                            "zoomMin" : 14
+                        }]
+                    }, {
+                        "attribution" : "Image courtesy of NASA",
+                        "coverageAreas" : [{
+                            "bbox" : [-90, -180, 90, 180],
+                            "zoomMax" : 8,
                             "zoomMin" : 1
                         }]
                     }],
-                    "statusCode" : 200,
-                    "statusDescription" : "OK",
-                    "traceId" : "c9cf8c74a8b24644974288c92e448972|EWRM003311|02.00.171.2600|"
-                });
+                    "vintageEnd" : null,
+                    "vintageStart" : null,
+                    "zoomMax" : 21,
+                    "zoomMin" : 1
+                }]
+            }],
+            "statusCode" : 200,
+            "statusDescription" : "OK",
+            "traceId" : "ea754a48ccdb4dd297c8f35350e0f0d9|BN20130533|02.00.106.1600|"
+        };
+    }
+
+    function installFakeMetadataRequest(url, mapStyle, proxy) {
+        var expectedUrl = url + '/REST/v1/Imagery/Metadata/' + mapStyle + '?incl=ImageryProviders&key=';
+        if (defined(proxy)) {
+            expectedUrl = proxy.getURL(expectedUrl);
+        }
+
+        jsonp.loadAndExecuteScript = function(url, functionName) {
+            expect(url).toStartWith(expectedUrl);
+
+            setTimeout(function() {
+                window[functionName](createFakeMetadataResponse(mapStyle));
             }, 1);
         };
+    }
+
+    function installFakeImageRequest(expectedUrl) {
+        loadImage.createImage = function(url, crossOrigin, deferred) {
+            if (/^blob:/.test(url)) {
+                // load blob url normally
+                loadImage.defaultCreateImage(url, crossOrigin, deferred);
+            } else {
+                if (defined(expectedUrl)) {
+                    expect(url).toEqual(expectedUrl);
+                }
+                // Just return any old image.
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            }
+        };
+
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            if (defined(expectedUrl)) {
+                expect(url).toEqual(expectedUrl);
+            }
+
+            // Just return any old image.
+            loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
+        };
+    }
+
+    it('returns valid value for hasAlphaChannel', function() {
+        var url = 'http://fake.fake.invalid';
+        var mapStyle = BingMapsStyle.AERIAL;
+
+        installFakeMetadataRequest(url, mapStyle);
+        installFakeImageRequest();
 
         var provider = new BingMapsImageryProvider({
             url : url,
             mapStyle : mapStyle
         });
 
-        expect(provider.getUrl()).toEqual(url);
-        expect(provider.getKey()).toBeDefined();
-        expect(provider.getMapStyle()).toEqual(mapStyle);
-
         waitsFor(function() {
-            return provider.isReady();
+            return provider.ready;
         }, 'imagery provider to become ready');
 
-        var tile000Image;
-
         runs(function() {
-            expect(provider.getTileWidth()).toEqual(256);
-            expect(provider.getTileHeight()).toEqual(256);
-            expect(provider.getMaximumLevel()).toEqual(20);
-            expect(provider.getTilingScheme()).toBeInstanceOf(WebMercatorTilingScheme);
-            expect(provider.getTileDiscardPolicy()).toBeInstanceOf(DiscardMissingTileImagePolicy);
-            expect(provider.getExtent()).toEqual(new WebMercatorTilingScheme().getExtent());
+            expect(typeof provider.hasAlphaChannel).toBe('boolean');
+        });
+    });
+
+    it('can provide a root tile', function() {
+        var url = 'http://fake.fake.invalid';
+        var mapStyle = BingMapsStyle.ROAD;
+
+        installFakeMetadataRequest(url, mapStyle);
+        installFakeImageRequest();
+
+        var provider = new BingMapsImageryProvider({
+            url : url,
+            mapStyle : mapStyle
         });
 
+        expect(provider.url).toEqual(url);
+        expect(provider.key).toBeDefined();
+        expect(provider.mapStyle).toEqual(mapStyle);
+
         waitsFor(function() {
-            return defined(provider.getCredit());
-        }, 'logo to become ready');
+            return provider.ready;
+        }, 'imagery provider to become ready');
 
         runs(function() {
-            expect(provider.getCredit()).toBeInstanceOf(Object);
+            expect(provider.tileWidth).toEqual(256);
+            expect(provider.tileHeight).toEqual(256);
+            expect(provider.maximumLevel).toEqual(20);
+            expect(provider.tilingScheme).toBeInstanceOf(WebMercatorTilingScheme);
+            expect(provider.tileDiscardPolicy).toBeInstanceOf(DiscardMissingTileImagePolicy);
+            expect(provider.rectangle).toEqual(new WebMercatorTilingScheme().rectangle);
+            expect(provider.credit).toBeInstanceOf(Object);
 
-            loadImage.createImage = function(url, crossOrigin, deferred) {
-                if (url.indexOf('blob:') !== 0) {
-                    expect(url).toEqual('http://fake.t0.tiles.fake.invalid/tiles/r0?g=1062&lbl=l1&productSet=mmCB');
-                }
+            installFakeImageRequest('http://ecn.t0.tiles.virtualearth.net.fake.invalid/tiles/r0.jpeg?g=3031&mkt=');
 
-                // Just return any old image.
-                return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
-            };
-
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred) {
-                expect(url).toEqual('http://fake.t0.tiles.fake.invalid/tiles/r0?g=1062&lbl=l1&productSet=mmCB');
-
-                // Just return any old image.
-                return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
-            };
-
-            when(provider.requestImage(0, 0, 0), function(image) {
-                tile000Image = image;
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(image).toBeInstanceOf(Image);
             });
         });
+    });
+
+    it('sets correct culture in tile requests', function() {
+        var url = 'http://fake.fake.invalid';
+        var mapStyle = BingMapsStyle.AERIAL_WITH_LABELS;
+
+        installFakeMetadataRequest(url, mapStyle);
+        installFakeImageRequest();
+
+        var culture = 'ja-jp';
+
+        var provider = new BingMapsImageryProvider({
+            url : url,
+            mapStyle : mapStyle,
+            culture : culture
+        });
+
+        expect(provider.culture).toEqual(culture);
 
         waitsFor(function() {
-            return defined(tile000Image);
-        }, 'requested tile to be loaded');
+            return provider.ready;
+        }, 'imagery provider to become ready');
 
         runs(function() {
-            expect(tile000Image).toBeInstanceOf(Image);
+            installFakeImageRequest('http://ecn.t0.tiles.virtualearth.net.fake.invalid/tiles/h0.jpeg?g=3031&mkt=ja-jp');
+
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(image).toBeInstanceOf(Image);
+            });
         });
     });
 
     it('routes requests through a proxy if one is specified', function() {
         var url = 'http://foo.bar.invalid';
-        var mapStyle = BingMapsStyle.COLLINS_BART;
-        var metadataUrl = url + '/REST/v1/Imagery/Metadata/' + mapStyle.imagerySetName + '?key=';
+        var mapStyle = BingMapsStyle.ROAD;
+
         var proxy = new DefaultProxy('/proxy/');
 
-        jsonp.loadAndExecuteScript = function(url, functionName) {
-            expect(url.indexOf(proxy.getURL(metadataUrl)) === 0).toEqual(true);
-            setTimeout(function() {
-                window[functionName]({
-                    "authenticationResultCode" : "ValidCredentials",
-                    "brandLogoUri" : "http:\/\/dev.virtualearth.net\/Branding\/logo_powered_by.png",
-                    "copyright" : "Copyright © 2012 Microsoft and its suppliers. All rights reserved. This API cannot be accessed and the content and any results may not be used, reproduced or transmitted in any manner without express written permission from Microsoft Corporation.",
-                    "resourceSets" : [{
-                        "estimatedTotal" : 1,
-                        "resources" : [{
-                            "__type" : "ImageryMetadata:http:\/\/schemas.microsoft.com\/search\/local\/ws\/rest\/v1",
-                            "imageHeight" : 256,
-                            "imageUrl" : "http:\/\/ecn.{subdomain}.tiles.virtualearth.net\/tiles\/r{quadkey}?g=1062&lbl=l1&productSet=mmCB",
-                            "imageUrlSubdomains" : ["t0"],
-                            "imageWidth" : 256,
-                            "imageryProviders" : null,
-                            "vintageEnd" : null,
-                            "vintageStart" : null,
-                            "zoomMax" : 21,
-                            "zoomMin" : 1
-                        }]
-                    }],
-                    "statusCode" : 200,
-                    "statusDescription" : "OK",
-                    "traceId" : "c9cf8c74a8b24644974288c92e448972|EWRM003311|02.00.171.2600|"
-                });
-            }, 1);
-        };
+        installFakeMetadataRequest(url, mapStyle, proxy);
+        installFakeImageRequest();
 
         var provider = new BingMapsImageryProvider({
-            url : 'http://foo.bar.invalid',
+            url : url,
             mapStyle : mapStyle,
             proxy : proxy
         });
 
-        expect(provider.getUrl()).toEqual(url);
-        expect(provider.getProxy()).toEqual(proxy);
+        expect(provider.url).toEqual(url);
+        expect(provider.proxy).toEqual(proxy);
 
         waitsFor(function() {
-            return provider.isReady();
+            return provider.ready;
         }, 'imagery provider to become ready');
 
-        var tile000Image;
-
         runs(function() {
-            loadImage.createImage = function(url, crossOrigin, deferred) {
-                if (url.indexOf('blob:') !== 0) {
-                    expect(url).toEqual(proxy.getURL('http://ecn.t0.tiles.virtualearth.net/tiles/r0?g=1062&lbl=l1&productSet=mmCB'));
-                }
+            installFakeImageRequest(proxy.getURL('http://ecn.t0.tiles.virtualearth.net.fake.invalid/tiles/r0.jpeg?g=3031&mkt='));
 
-                // Just return any old image.
-                return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
-            };
-
-            loadWithXhr.load = function(url, responseType, method, data, headers, deferred) {
-                expect(url).toEqual(proxy.getURL('http://ecn.t0.tiles.virtualearth.net/tiles/r0?g=1062&lbl=l1&productSet=mmCB'));
-
-                // Just return any old image.
-                return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
-            };
-
-            when(provider.requestImage(0, 0, 0), function(image) {
-                tile000Image = image;
+            waitsForPromise(provider.requestImage(0, 0, 0), function(image) {
+                expect(image).toBeInstanceOf(Image);
             });
-        });
-
-        waitsFor(function() {
-            return defined(tile000Image);
-        }, 'requested tile to be loaded');
-
-        runs(function() {
-            expect(tile000Image).toBeInstanceOf(Image);
         });
     });
 
@@ -271,59 +307,37 @@ defineSuite([
         });
 
         var errorEventRaised = false;
-        provider.getErrorEvent().addEventListener(function(error) {
-            expect(error.message.indexOf(url) >= 0).toEqual(true);
+        provider.errorEvent.addEventListener(function(error) {
+            expect(error.message).toContain(url);
             errorEventRaised = true;
         });
 
         waitsFor(function() {
-            return provider.isReady() || errorEventRaised;
+            return provider.ready || errorEventRaised;
         }, 'imagery provider to become ready or raise error event');
 
         runs(function() {
-            expect(provider.isReady()).toEqual(false);
+            expect(provider.ready).toEqual(false);
             expect(errorEventRaised).toEqual(true);
         });
     });
 
     it('raises error event when image cannot be loaded', function() {
-        var mapStyle = BingMapsStyle.COLLINS_BART;
+        var url = 'http://foo.bar.invalid';
+        var mapStyle = BingMapsStyle.ROAD;
 
-        jsonp.loadAndExecuteScript = function(url, functionName) {
-            window[functionName]({
-                "authenticationResultCode" : "ValidCredentials",
-                "brandLogoUri" : "http:\/\/dev.virtualearth.net\/Branding\/logo_powered_by.png",
-                "copyright" : "Copyright © 2012 Microsoft and its suppliers. All rights reserved. This API cannot be accessed and the content and any results may not be used, reproduced or transmitted in any manner without express written permission from Microsoft Corporation.",
-                "resourceSets" : [{
-                    "estimatedTotal" : 1,
-                    "resources" : [{
-                        "__type" : "ImageryMetadata:http:\/\/schemas.microsoft.com\/search\/local\/ws\/rest\/v1",
-                        "imageHeight" : 256,
-                        "imageUrl" : "http:\/\/invalid.{subdomain}.invalid\/tiles\/r{quadkey}?g=1062&lbl=l1&productSet=mmCB",
-                        "imageUrlSubdomains" : ["t0"],
-                        "imageWidth" : 256,
-                        "imageryProviders" : null,
-                        "vintageEnd" : null,
-                        "vintageStart" : null,
-                        "zoomMax" : 21,
-                        "zoomMin" : 1
-                    }]
-                }],
-                "statusCode" : 200,
-                "statusDescription" : "OK",
-                "traceId" : "c9cf8c74a8b24644974288c92e448972|EWRM003311|02.00.171.2600|"
-            });
-        };
+        installFakeMetadataRequest(url, mapStyle);
+        installFakeImageRequest();
 
         var provider = new BingMapsImageryProvider({
-            url : 'host.invalid',
+            url : url,
             mapStyle : mapStyle
         });
 
         var layer = new ImageryLayer(provider);
 
         var tries = 0;
-        provider.getErrorEvent().addEventListener(function(error) {
+        provider.errorEvent.addEventListener(function(error) {
             expect(error.timesRetried).toEqual(tries);
             ++tries;
             if (tries < 3) {
@@ -332,29 +346,34 @@ defineSuite([
         });
 
         loadImage.createImage = function(url, crossOrigin, deferred) {
-            // Succeed after 2 tries
-            if (url.indexOf('blob:') !== 0 && tries === 2) {
-                // valid URL
-                return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            if (/^blob:/.test(url)) {
+                // load blob url normally
+                loadImage.defaultCreateImage(url, crossOrigin, deferred);
+            } else if (tries === 2) {
+                // Succeed after 2 tries
+                loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
+            } else {
+                // fail
+                setTimeout(function() {
+                    deferred.reject();
+                }, 1);
             }
-
-            // invalid URL
-            return loadImage.defaultCreateImage(url, crossOrigin, deferred);
         };
 
-        loadWithXhr.load = function(url, responseType, method, data, headers, deferred) {
-            // Succeed after 2 tries
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
             if (tries === 2) {
-                // valid URL
-                return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
+                // Succeed after 2 tries
+                loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
+            } else {
+                // fail
+                setTimeout(function() {
+                    deferred.reject();
+                }, 1);
             }
-
-            // invalid URL
-            return loadWithXhr.defaultLoad(url, responseType, method, data, headers, deferred);
         };
 
         waitsFor(function() {
-            return provider.isReady();
+            return provider.ready;
         }, 'imagery provider to become ready');
 
         var imagery;

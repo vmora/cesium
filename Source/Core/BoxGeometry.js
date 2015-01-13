@@ -1,28 +1,28 @@
 /*global define*/
 define([
-        './defined',
-        './DeveloperError',
+        './BoundingSphere',
         './Cartesian3',
         './ComponentDatatype',
-        './PrimitiveType',
         './defaultValue',
-        './BoundingSphere',
+        './defined',
+        './DeveloperError',
+        './Geometry',
         './GeometryAttribute',
         './GeometryAttributes',
-        './VertexFormat',
-        './Geometry'
+        './PrimitiveType',
+        './VertexFormat'
     ], function(
-        defined,
-        DeveloperError,
+        BoundingSphere,
         Cartesian3,
         ComponentDatatype,
-        PrimitiveType,
         defaultValue,
-        BoundingSphere,
+        defined,
+        DeveloperError,
+        Geometry,
         GeometryAttribute,
         GeometryAttributes,
-        VertexFormat,
-        Geometry) {
+        PrimitiveType,
+        VertexFormat) {
     "use strict";
 
     var diffScratch = new Cartesian3();
@@ -33,15 +33,16 @@ define([
      * @alias BoxGeometry
      * @constructor
      *
+     * @param {Object} options Object with the following properties:
      * @param {Cartesian3} options.minimumCorner The minimum x, y, and z coordinates of the box.
      * @param {Cartesian3} options.maximumCorner The maximum x, y, and z coordinates of the box.
      * @param {VertexFormat} [options.vertexFormat=VertexFormat.DEFAULT] The vertex attributes to be computed.
      *
-     * @exception {DeveloperError} options.minimumCorner is required.
-     * @exception {DeveloperError} options.maximumCorner is required.
+     * @see BoxGeometry.fromDimensions
+     * @see BoxGeometry.createGeometry
+     * @see Packable
      *
-     * @see BoxGeometry#fromDimensions
-     * @see BoxGeometry#createGeometry
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Box.html|Cesium Sandcastle Box Demo}
      *
      * @example
      * var box = new Cesium.BoxGeometry({
@@ -75,15 +76,13 @@ define([
 
     /**
      * Creates a cube centered at the origin given its dimensions.
-     * @memberof BoxGeometry
      *
      * @param {Cartesian3} options.dimensions The width, depth, and height of the box stored in the x, y, and z coordinates of the <code>Cartesian3</code>, respectively.
      * @param {VertexFormat} [options.vertexFormat=VertexFormat.DEFAULT] The vertex attributes to be computed.
      *
-     * @exception {DeveloperError} options.dimensions is required.
      * @exception {DeveloperError} All dimensions components must be greater than or equal to zero.
      *
-     * @see BoxGeometry#createGeometry
+     * @see BoxGeometry.createGeometry
      *
      * @example
      * var box = Cesium.BoxGeometry.fromDimensions({
@@ -105,8 +104,8 @@ define([
         }
         //>>includeEnd('debug');
 
-        var corner = Cartesian3.multiplyByScalar(dimensions, 0.5);
-        var min = Cartesian3.negate(corner);
+        var corner = Cartesian3.multiplyByScalar(dimensions, 0.5, new Cartesian3());
+        var min = Cartesian3.negate(corner, new Cartesian3());
         var max = corner;
 
         var newOptions = {
@@ -118,8 +117,78 @@ define([
     };
 
     /**
+     * The number of elements used to pack the object into an array.
+     * @type {Number}
+     */
+    BoxGeometry.packedLength = 2 * Cartesian3.packedLength + VertexFormat.packedLength;
+
+    /**
+     * Stores the provided instance into the provided array.
+     * @function
+     *
+     * @param {Object} value The value to pack.
+     * @param {Number[]} array The array to pack into.
+     * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+     */
+    BoxGeometry.pack = function(value, array, startingIndex) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(value)) {
+            throw new DeveloperError('value is required');
+        }
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        Cartesian3.pack(value._minimumCorner, array, startingIndex);
+        Cartesian3.pack(value._maximumCorner, array, startingIndex + Cartesian3.packedLength);
+        VertexFormat.pack(value._vertexFormat, array, startingIndex + 2 * Cartesian3.packedLength);
+    };
+
+    var scratchMin = new Cartesian3();
+    var scratchMax = new Cartesian3();
+    var scratchVertexFormat = new VertexFormat();
+    var scratchOptions = {
+        minimumCorner : scratchMin,
+        maximumCorner : scratchMax,
+        vertexFormat : scratchVertexFormat
+    };
+
+    /**
+     * Retrieves an instance from a packed array.
+     *
+     * @param {Number[]} array The packed array.
+     * @param {Number} [startingIndex=0] The starting index of the element to be unpacked.
+     * @param {BoxGeometry} [result] The object into which to store the result.
+     */
+    BoxGeometry.unpack = function(array, startingIndex, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        var min = Cartesian3.unpack(array, startingIndex, scratchMin);
+        var max = Cartesian3.unpack(array, startingIndex + Cartesian3.packedLength, scratchMax);
+        var vertexFormat = VertexFormat.unpack(array, startingIndex + 2 * Cartesian3.packedLength, scratchVertexFormat);
+
+        if (!defined(result)) {
+            return new BoxGeometry(scratchOptions);
+        }
+
+        result._minimumCorner = Cartesian3.clone(min, result._minimumCorner);
+        result._maximumCorner = Cartesian3.clone(max, result._maximumCorner);
+        result._vertexFormat = VertexFormat.clone(vertexFormat, result._vertexFormat);
+
+        return result;
+    };
+
+    /**
      * Computes the geometric representation of a box, including its vertices, indices, and a bounding sphere.
-     * @memberof BoxGeometry
      *
      * @param {BoxGeometry} boxGeometry A description of the box.
      * @returns {Geometry} The computed vertices and indices.

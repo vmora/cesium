@@ -1,26 +1,26 @@
 /*global define*/
 define([
+        '../Core/Cartesian3',
+        '../Core/Color',
         '../Core/defaultValue',
         '../Core/defined',
-        '../Core/Cartesian3',
-        '../Core/Matrix4',
-        '../Core/Color',
         '../Core/destroyObject',
         '../Core/GeometryInstance',
+        '../Core/Matrix4',
         '../Core/PolylineGeometry',
-        './Primitive',
-        './PolylineColorAppearance'
+        './PolylineColorAppearance',
+        './Primitive'
     ], function(
+        Cartesian3,
+        Color,
         defaultValue,
         defined,
-        Cartesian3,
-        Matrix4,
-        Color,
         destroyObject,
         GeometryInstance,
+        Matrix4,
         PolylineGeometry,
-        Primitive,
-        PolylineColorAppearance) {
+        PolylineColorAppearance,
+        Primitive) {
     "use strict";
 
     /**
@@ -37,11 +37,12 @@ define([
      * @alias DebugModelMatrixPrimitive
      * @constructor
      *
+     * @param {Object} [options] Object with the following properties:
      * @param {Number} [options.length=10000000.0] The length of the axes in meters.
      * @param {Number} [options.width=2.0] The width of the axes in pixels.
      * @param {Matrix4} [options.modelMatrix=Matrix4.IDENTITY] The 4x4 matrix that defines the reference frame, i.e., origin plus axes, to visualize.
      * @param {Boolean} [options.show=true] Determines if this primitive will be shown.
-     * @param {Object} [options.id=undefined] A user-defined object to return when the instance is picked with {@link Scene#pick}
+     * @param {Object} [options.id] A user-defined object to return when the instance is picked with {@link Scene#pick}
      *
      * @example
      * primitives.add(new Cesium.DebugModelMatrixPrimitive({
@@ -125,35 +126,70 @@ define([
                 this._primitive.destroy();
             }
 
-            this._primitive = new Primitive({
-                geometryInstances : new GeometryInstance({
-                    geometry : PolylineGeometry.createGeometry(new PolylineGeometry({
-                        positions : [
-                            Cartesian3.ZERO,
-                            Cartesian3.UNIT_X,
-                            Cartesian3.ZERO,
-                            Cartesian3.UNIT_Y,
-                            Cartesian3.ZERO,
-                            Cartesian3.UNIT_Z
-                        ],
-                        width : this.width,
-                        vertexFormat : PolylineColorAppearance.VERTEX_FORMAT,
-                        colors : [
-                            Color.RED,
-                            Color.RED,
-                            Color.GREEN,
-                            Color.GREEN,
-                            Color.BLUE,
-                            Color.BLUE
-                        ]
-                    })),
-                    modelMatrix : Matrix4.multiplyByUniformScale(this.modelMatrix, this.length),
-                    id : this.id,
-                    pickPrimitive : this
+            // Workaround projecting (0, 0, 0)
+            if ((this.modelMatrix[12] === 0.0 && this.modelMatrix[13] === 0.0 && this.modelMatrix[14] === 0.0)) {
+                this.modelMatrix[14] = 0.01;
+            }
+
+            var x = new GeometryInstance({
+                geometry : new PolylineGeometry({
+                    positions : [
+                        Cartesian3.ZERO,
+                        Cartesian3.UNIT_X
+                    ],
+                    width : this.width,
+                    vertexFormat : PolylineColorAppearance.VERTEX_FORMAT,
+                    colors : [
+                        Color.RED,
+                        Color.RED
+                    ],
+                    followSurface: false
                 }),
+                modelMatrix : Matrix4.multiplyByUniformScale(this.modelMatrix, this.length, new Matrix4()),
+                id : this.id,
+                pickPrimitive : this
+            });
+            var y = new GeometryInstance({
+                geometry : new PolylineGeometry({
+                    positions : [
+                        Cartesian3.ZERO,
+                        Cartesian3.UNIT_Y
+                    ],
+                    width : this.width,
+                    vertexFormat : PolylineColorAppearance.VERTEX_FORMAT,
+                    colors : [
+                        Color.GREEN,
+                        Color.GREEN
+                    ],
+                    followSurface: false
+                }),
+                modelMatrix : Matrix4.multiplyByUniformScale(this.modelMatrix, this.length, new Matrix4()),
+                id : this.id,
+                pickPrimitive : this
+            });
+            var z = new GeometryInstance({
+                geometry : new PolylineGeometry({
+                    positions : [
+                        Cartesian3.ZERO,
+                        Cartesian3.UNIT_Z
+                    ],
+                    width : this.width,
+                    vertexFormat : PolylineColorAppearance.VERTEX_FORMAT,
+                    colors : [
+                        Color.BLUE,
+                        Color.BLUE
+                    ],
+                    followSurface: false
+                }),
+                modelMatrix : Matrix4.multiplyByUniformScale(this.modelMatrix, this.length, new Matrix4()),
+                id : this.id,
+                pickPrimitive : this
+            });
+
+            this._primitive = new Primitive({
+                geometryInstances : [x, y, z],
                 appearance : new PolylineColorAppearance(),
-                asynchronous : false,
-                allow3DOnly : Matrix4.equals(this.modelMatrix, Matrix4.IDENTITY)  // Workaround projecting (0, 0, 0)
+                asynchronous : false
             });
         }
 
@@ -166,8 +202,6 @@ define([
      * If this object was destroyed, it should not be used; calling any function other than
      * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
      * </p>
-     *
-     * @memberof DebugModelMatrixPrimitive
      *
      * @returns {Boolean} <code>true</code> if this object was destroyed; otherwise, <code>false</code>.
      *
@@ -186,16 +220,14 @@ define([
      * assign the return value (<code>undefined</code>) to the object as done in the example.
      * </p>
      *
-     * @memberof DebugModelMatrixPrimitive
-     *
      * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
-     * @see DebugModelMatrixPrimitive#isDestroyed
-     *
      * @example
      * p = p && p.destroy();
+     *
+     * @see DebugModelMatrixPrimitive#isDestroyed
      */
     DebugModelMatrixPrimitive.prototype.destroy = function() {
         this._primitive = this._primitive && this._primitive.destroy();

@@ -2,7 +2,6 @@
 /Build
 /Instrumented
 /Cesium-*.zip
-/web.config
 .DS_Store
 Thumbs.db
 
@@ -20,4 +19,5 @@ Thumbs.db
 
 /Specs/SpecList.js
 
-node_modules
+/node_modules
+

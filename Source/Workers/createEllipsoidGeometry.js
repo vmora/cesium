@@ -1,24 +1,16 @@
 /*global define*/
 define([
-        '../Core/EllipsoidGeometry',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/defined',
+        '../Core/EllipsoidGeometry'
     ], function(
-        EllipsoidGeometry,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        defined,
+        EllipsoidGeometry) {
     "use strict";
 
-    function createEllipsoidGeometry(parameters, transferableObjects) {
-        var ellipsoidGeometry = parameters.geometry;
-        var geometry = EllipsoidGeometry.createGeometry(ellipsoidGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
-    }
-
-    return createTaskProcessorWorker(createEllipsoidGeometry);
+    return function(ellipsoidGeometry, offset) {
+        if (defined(offset)) {
+            ellipsoidGeometry = EllipsoidGeometry.unpack(ellipsoidGeometry, offset);
+        }
+        return EllipsoidGeometry.createGeometry(ellipsoidGeometry);
+    };
 });

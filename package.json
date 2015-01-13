@@ -1,17 +1,22 @@
 {
-  "name": "cesium",
-  "version": "0.25.0",
-  "description": "Cesium-node is a helper for executing a subset of Cesium functionality directly within nodejs. Most of Cesium/Source/Core is supported.",
-  "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/AnalyticalGraphicsInc/cesium.git"
-  },
-  "author": "",
-  "license": "Apache 2.0",
-  "dependencies": {
-    "requirejs": "~2.1.10",
-    "async": "~0.2.10",
-    "q": "~1.0.1"
-  }
+    "name": "cesium",
+    "version": "1.5.0",
+    "description": "Cesium is a JavaScript library for creating 3D globes and 2D maps in a web browser without a plugin.",
+    "homepage": "http://cesiumjs.org",
+    "license": "Apache-2.0",
+    "main": "index.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/AnalyticalGraphicsInc/cesium.git"
+    },
+    "devDependencies": {
+        "jsdoc": "3.3.0-alpha9",
+        "express": "4.4.4",
+        "compression": "1.0.8",
+        "request": "2.36.0",
+        "yargs": "1.2.6",
+        "requirejs": "~2.1.10",
+        "async": "~0.2.10",
+        "q": "~1.0.1"
+    }
 }

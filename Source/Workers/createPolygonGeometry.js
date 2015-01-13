@@ -1,28 +1,21 @@
 /*global define*/
 define([
-        '../Core/PolygonGeometry',
+        '../Core/defined',
         '../Core/Ellipsoid',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/PolygonGeometry'
     ], function(
-        PolygonGeometry,
+        defined,
         Ellipsoid,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        PolygonGeometry) {
     "use strict";
 
-    function createPolygonGeometry(parameters, transferableObjects) {
-        var polygonGeometry = parameters.geometry;
+    function createPolygonGeometry(polygonGeometry, offset) {
+        if (defined(offset)) {
+            polygonGeometry = PolygonGeometry.unpack(polygonGeometry, offset);
+        }
         polygonGeometry._ellipsoid = Ellipsoid.clone(polygonGeometry._ellipsoid);
-
-        var geometry = PolygonGeometry.createGeometry(polygonGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
+        return PolygonGeometry.createGeometry(polygonGeometry);
     }
 
-    return createTaskProcessorWorker(createPolygonGeometry);
+    return createPolygonGeometry;
 });

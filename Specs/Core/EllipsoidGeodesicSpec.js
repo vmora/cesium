@@ -1,14 +1,14 @@
 /*global defineSuite*/
 defineSuite([
-             'Core/EllipsoidGeodesic',
-             'Core/Ellipsoid',
-             'Core/Cartographic',
-             'Core/Math'
-            ], function(
-              EllipsoidGeodesic,
-              Ellipsoid,
-              Cartographic,
-              CesiumMath) {
+        'Core/EllipsoidGeodesic',
+        'Core/Cartographic',
+        'Core/Ellipsoid',
+        'Core/Math'
+    ], function(
+        EllipsoidGeodesic,
+        Cartographic,
+        Ellipsoid,
+        CesiumMath) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -52,21 +52,21 @@ defineSuite([
     it('getSurfaceDistance throws if start or end never defined', function() {
         expect(function() {
             var elGeo = new EllipsoidGeodesic();
-            return elGeo.getSurfaceDistance();
+            return elGeo.surfaceDistance;
         }).toThrowDeveloperError();
     });
 
     it('getStartHeading throws if start or end never defined', function() {
         expect(function() {
             var elGeo = new EllipsoidGeodesic();
-            return elGeo.getStartHeading();
+            return elGeo.startHeading;
         }).toThrowDeveloperError();
     });
 
     it('getEndHeading throws if start or end never defined', function() {
         expect(function() {
             var elGeo = new EllipsoidGeodesic();
-            return elGeo.getEndHeading();
+            return elGeo.endHeading;
         }).toThrowDeveloperError();
     });
 
@@ -77,8 +77,8 @@ defineSuite([
         var end = new Cartographic(thirtyDegrees, thirtyDegrees);
 
         var geodesic = new EllipsoidGeodesic(start, end);
-        expect(start).toEqual(geodesic.getStart());
-        expect(end).toEqual(geodesic.getEnd());
+        expect(start).toEqual(geodesic.start);
+        expect(end).toEqual(geodesic.end);
     });
 
     it('sets end points', function() {
@@ -86,8 +86,8 @@ defineSuite([
         var end = new Cartographic(CesiumMath.PI_OVER_TWO, CesiumMath.PI_OVER_TWO);
         var geodesic = new EllipsoidGeodesic();
         geodesic.setEndPoints(start, end);
-        expect(start).toEqual(geodesic.getStart());
-        expect(end).toEqual(geodesic.getEnd());
+        expect(start).toEqual(geodesic.start);
+        expect(end).toEqual(geodesic.end);
     });
 
     it('gets start heading', function() {
@@ -96,7 +96,7 @@ defineSuite([
         var end = new Cartographic(Math.PI, 0);
 
         var geodesic = new EllipsoidGeodesic(start, end, ellipsoid);
-        expect(CesiumMath.PI_OVER_TWO).toEqualEpsilon(geodesic.getStartHeading(), CesiumMath.EPSILON11);
+        expect(CesiumMath.PI_OVER_TWO).toEqualEpsilon(geodesic.startHeading, CesiumMath.EPSILON11);
     });
 
     it('gets end heading', function() {
@@ -105,7 +105,7 @@ defineSuite([
         var end = new Cartographic(Math.PI, 0);
 
         var geodesic = new EllipsoidGeodesic(start, end, ellipsoid);
-        expect(CesiumMath.PI_OVER_TWO).toEqualEpsilon(geodesic.getEndHeading(), CesiumMath.EPSILON11);
+        expect(CesiumMath.PI_OVER_TWO).toEqualEpsilon(geodesic.endHeading, CesiumMath.EPSILON11);
     });
 
     it('computes distance at equator', function() {
@@ -114,7 +114,7 @@ defineSuite([
         var end = new Cartographic(Math.PI, 0);
 
         var geodesic = new EllipsoidGeodesic(start, end, ellipsoid);
-        expect(CesiumMath.PI_OVER_TWO * 6).toEqualEpsilon(geodesic.getSurfaceDistance(), CesiumMath.EPSILON11);
+        expect(CesiumMath.PI_OVER_TWO * 6).toEqualEpsilon(geodesic.surfaceDistance, CesiumMath.EPSILON11);
     });
 
     it('computes distance at meridian', function() {
@@ -126,7 +126,7 @@ defineSuite([
 
         var geodesic = new EllipsoidGeodesic(start, end, ellipsoid);
         var thirtyDegrees = Math.PI / 6;
-        expect(thirtyDegrees * 6).toEqualEpsilon(geodesic.getSurfaceDistance(), CesiumMath.EPSILON11);
+        expect(thirtyDegrees * 6).toEqualEpsilon(geodesic.surfaceDistance, CesiumMath.EPSILON11);
     });
 
     it('computes distance at pole', function() {
@@ -138,7 +138,7 @@ defineSuite([
 
         var geodesic = new EllipsoidGeodesic(start, end, ellipsoid);
         var sixtyDegrees = Math.PI / 3;
-        expect(sixtyDegrees * 6).toEqualEpsilon(geodesic.getSurfaceDistance(), CesiumMath.EPSILON11);
+        expect(sixtyDegrees * 6).toEqualEpsilon(geodesic.surfaceDistance, CesiumMath.EPSILON11);
     });
 
     it('interpolates start and end points', function() {
@@ -148,7 +148,7 @@ defineSuite([
         var end = new Cartographic(thirtyDegrees, thirtyDegrees);
 
         var geodesic = new EllipsoidGeodesic(start, end);
-        var distance = geodesic.getSurfaceDistance();
+        var distance = geodesic.surfaceDistance;
 
         var first = geodesic.interpolateUsingSurfaceDistance(0.0);
         var last = geodesic.interpolateUsingSurfaceDistance(distance);
@@ -168,7 +168,7 @@ defineSuite([
         var expectedMid = new Cartographic(thirtyDegrees, 0);
 
         var geodesic = new EllipsoidGeodesic(start, end);
-        var distance = Ellipsoid.WGS84.getRadii().x * fifteenDegrees;
+        var distance = Ellipsoid.WGS84.radii.x * fifteenDegrees;
 
         var midpoint = geodesic.interpolateUsingSurfaceDistance(distance);
 
@@ -235,7 +235,7 @@ defineSuite([
         var expectedMid = new Cartographic(thirtyDegrees, 0);
 
         var geodesic = new EllipsoidGeodesic(start, end);
-        var distance = Ellipsoid.WGS84.getRadii().x * fifteenDegrees;
+        var distance = Ellipsoid.WGS84.radii.x * fifteenDegrees;
 
         var result = new Cartographic();
         var midpoint = geodesic.interpolateUsingSurfaceDistance(distance, result);
@@ -244,5 +244,13 @@ defineSuite([
 
         expect(expectedMid.longitude).toEqualEpsilon(result.longitude, CesiumMath.EPSILON13);
         expect(expectedMid.latitude).toEqualEpsilon(result.latitude, CesiumMath.EPSILON13);
+    });
+
+    it('doesn\'t modify incoming cartographics', function(){
+        var start = new Cartographic(1,2,3);
+        var end = new Cartographic(2,3,4);
+        var geodesic = new EllipsoidGeodesic(start, end);
+        expect(start.height).toEqual(3);
+        expect(end.height).toEqual(4);
     });
 });

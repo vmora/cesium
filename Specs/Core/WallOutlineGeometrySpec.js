@@ -1,16 +1,16 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/WallOutlineGeometry',
-         'Core/Cartesian3',
-         'Core/Cartographic',
-         'Core/Ellipsoid',
-         'Core/Math'
-     ], function(
-         WallOutlineGeometry,
-         Cartesian3,
-         Cartographic,
-         Ellipsoid,
-         CesiumMath) {
+        'Core/WallOutlineGeometry',
+        'Core/Cartesian3',
+        'Core/Ellipsoid',
+        'Core/Math',
+        'Specs/createPackableSpecs'
+    ], function(
+        WallOutlineGeometry,
+        Cartesian3,
+        Ellipsoid,
+        CesiumMath,
+        createPackableSpecs) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -43,31 +43,28 @@ defineSuite([
     it('throws with less than 2 positions', function() {
         expect(function() {
             return WallOutlineGeometry.createGeometry(new WallOutlineGeometry({
-                positions : ellipsoid.cartographicArrayToCartesianArray([Cartographic.fromDegrees(49.0, 18.0, 1000.0)])
+                positions : [Cartesian3.fromDegrees(49.0, 18.0, 1000.0)]
             }));
         }).toThrowDeveloperError();
     });
 
-    it('throws with less than 2 unique positions', function() {
-        expect(function() {
-            return WallOutlineGeometry.createGeometry(new WallOutlineGeometry({
-                positions : ellipsoid.cartographicArrayToCartesianArray([
-                    Cartographic.fromDegrees(49.0, 18.0, 1000.0),
-                    Cartographic.fromDegrees(49.0, 18.0, 5000.0),
-                    Cartographic.fromDegrees(49.0, 18.0, 1000.0)
-                ])
-            }));
-        }).toThrowDeveloperError();
+    it('createGeometry returnes undefined with less than 2 unique positions', function() {
+        var geometry = WallOutlineGeometry.createGeometry(new WallOutlineGeometry({
+            positions : Cartesian3.fromDegreesArrayHeights([
+                49.0, 18.0, 1000.0,
+                49.0, 18.0, 5000.0,
+                49.0, 18.0, 1000.0
+            ])
+        }));
+        expect(geometry).not.toBeDefined();
     });
 
     it('creates positions relative to ellipsoid', function() {
-        var coords = [
-            Cartographic.fromDegrees(49.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(50.0, 18.0, 1000.0)
-        ];
-
         var w = WallOutlineGeometry.createGeometry(new WallOutlineGeometry({
-            positions    : ellipsoid.cartographicArrayToCartesianArray(coords),
+            positions : Cartesian3.fromDegreesArrayHeights([
+                49.0, 18.0, 1000.0,
+                50.0, 18.0, 1000.0
+            ]),
             granularity : Math.PI
         }));
 
@@ -83,13 +80,11 @@ defineSuite([
     });
 
     it('creates positions with minimum and maximum heights', function() {
-        var coords = [
-            Cartographic.fromDegrees(49.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(50.0, 18.0, 1000.0)
-        ];
-
         var w = WallOutlineGeometry.createGeometry(new WallOutlineGeometry({
-            positions    : ellipsoid.cartographicArrayToCartesianArray(coords),
+            positions    : Cartesian3.fromDegreesArrayHeights([
+                49.0, 18.0, 1000.0,
+                50.0, 18.0, 1000.0
+            ]),
             minimumHeights : [1000.0, 2000.0],
             maximumHeights : [3000.0, 4000.0],
             granularity : Math.PI
@@ -113,17 +108,16 @@ defineSuite([
     });
 
     it('cleans positions with duplicates', function() {
-        var coords = [
-            Cartographic.fromDegrees(49.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(49.0, 18.0, 2000.0),
-            Cartographic.fromDegrees(50.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(50.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(50.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(51.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(51.0, 18.0, 1000.0)
-        ];
         var w = WallOutlineGeometry.createGeometry(new WallOutlineGeometry({
-            positions    : ellipsoid.cartographicArrayToCartesianArray(coords)
+            positions    : Cartesian3.fromDegreesArrayHeights([
+                49.0, 18.0, 1000.0,
+                49.0, 18.0, 2000.0,
+                50.0, 18.0, 1000.0,
+                50.0, 18.0, 1000.0,
+                50.0, 18.0, 1000.0,
+                51.0, 18.0, 1000.0,
+                51.0, 18.0, 1000.0
+            ])
         }));
 
         var positions = w.attributes.position.values;
@@ -144,16 +138,14 @@ defineSuite([
     });
 
     it('creates positions with constant minimum and maximum heights', function() {
-        var coords = [
-            Cartographic.fromDegrees(49.0, 18.0, 1000.0),
-            Cartographic.fromDegrees(50.0, 18.0, 1000.0)
-        ];
-
         var min = 1000.0;
         var max = 2000.0;
 
         var w = WallOutlineGeometry.createGeometry(WallOutlineGeometry.fromConstantHeights({
-            positions    : ellipsoid.cartographicArrayToCartesianArray(coords),
+            positions    : Cartesian3.fromDegreesArrayHeights([
+                49.0, 18.0, 1000.0,
+                50.0, 18.0, 1000.0
+            ]),
             minimumHeight : min,
             maximumHeight : max
         }));
@@ -174,5 +166,14 @@ defineSuite([
         cartographic = ellipsoid.cartesianToCartographic(Cartesian3.fromArray(positions, 9));
         expect(cartographic.height).toEqualEpsilon(max, CesiumMath.EPSILON8);
     });
+
+    var positions = [new Cartesian3(1.0, 0.0, 0.0), new Cartesian3(0.0, 1.0, 0.0), new Cartesian3(0.0, 0.0, 1.0)];
+    var wall = new WallOutlineGeometry({
+        positions : positions,
+        granularity : 0.01,
+        ellipsoid: Ellipsoid.UNIT_SPHERE
+    });
+    var packedInstance = [3.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.01];
+    createPackableSpecs(WallOutlineGeometry, wall, packedInstance);
 });
 

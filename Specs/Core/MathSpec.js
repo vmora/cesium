@@ -1,12 +1,8 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/Math',
-         'Core/Cartesian3',
-         'Core/Cartographic'
-     ], function(
-         CesiumMath,
-         Cartesian3,
-         Cartographic) {
+        'Core/Math'
+    ], function(
+        CesiumMath) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -20,6 +16,59 @@ defineSuite([
 
     it('sign of 0', function() {
         expect(CesiumMath.sign(0)).toEqual(0);
+    });
+
+    it('signNotZero of -2', function() {
+        expect(CesiumMath.signNotZero(-2)).toEqual(-1);
+    });
+
+    it('signNotZero of 2', function() {
+        expect(CesiumMath.signNotZero(2)).toEqual(1);
+    });
+
+    it('signNotZero of 0', function() {
+        expect(CesiumMath.signNotZero(0)).toEqual(1);
+    });
+
+    //////////////////////////////////////////////////////////////////////
+    it('toSNorm -1.0', function() {
+        expect(CesiumMath.toSNorm(-1.0)).toEqual(0);
+    });
+
+    it('toSNorm 1.0', function() {
+        expect(CesiumMath.toSNorm(1.0)).toEqual(255);
+    });
+
+    it('toSNorm -1.0001', function() {
+        expect(CesiumMath.toSNorm(-1.0001)).toEqual(0);
+    });
+
+    it('toSNorm 1.0001', function() {
+        expect(CesiumMath.toSNorm(1.0001)).toEqual(255);
+    });
+
+    it('toSNorm 0.0', function() {
+        expect(CesiumMath.toSNorm(0.0)).toEqual(128);
+    });
+
+    it('fromSNorm 0', function() {
+        expect(CesiumMath.fromSNorm(0)).toEqual(-1.0);
+    });
+
+    it('fromSNorm 255', function() {
+        expect(CesiumMath.fromSNorm(255)).toEqual(1.0);
+    });
+
+    it('fromSNorm -0.0001', function() {
+        expect(CesiumMath.fromSNorm(-0.0001)).toEqual(-1.0);
+    });
+
+    it('fromSNorm 255.00001', function() {
+        expect(CesiumMath.fromSNorm(255.00001)).toEqual(1.0);
+    });
+
+    it('fromSNorm 128', function() {
+        expect(CesiumMath.fromSNorm(255.0 / 2)).toEqual(0.0);
     });
 
     //////////////////////////////////////////////////////////////////////
@@ -74,8 +123,20 @@ defineSuite([
         expect(CesiumMath.toRadians(360.0)).toEqual(2 * Math.PI);
     });
 
+    it('toRadians throws for undefined', function() {
+        expect(function() {
+            CesiumMath.toRadians();
+        }).toThrowDeveloperError();
+    });
+
     it('toDegrees', function() {
         expect(CesiumMath.toDegrees(Math.PI)).toEqual(180.0);
+    });
+
+    it('toDegrees throws for undefined', function() {
+        expect(function() {
+            CesiumMath.toDegrees();
+        }).toThrowDeveloperError();
     });
 
     it('convertLongitudeRange (1)', function() {
@@ -90,21 +151,87 @@ defineSuite([
         expect(CesiumMath.convertLongitudeRange(Math.PI)).toEqualEpsilon(-Math.PI, CesiumMath.EPSILON16);
     });
 
+    it('convertLongitudeRange throws for undefined', function() {
+        expect(function() {
+            CesiumMath.convertLongitudeRange();
+        }).toThrowDeveloperError();
+    });
+
     it('negativePiToPi positive', function() {
         expect(CesiumMath.negativePiToPi((Math.PI / 2) * Math.PI)).toEqualEpsilon((Math.PI / 2) * Math.PI - CesiumMath.TWO_PI, CesiumMath.EPSILON16);
         expect(CesiumMath.negativePiToPi(Math.PI / 0.5)).toEqualEpsilon(0.0, CesiumMath.EPSILON16);
-        expect(CesiumMath.negativePiToPi(Math.PI + CesiumMath.EPSILON10)).toEqualEpsilon(Math.PI, CesiumMath.EPSILON16);
+        expect(CesiumMath.negativePiToPi(Math.PI + CesiumMath.EPSILON10)).toEqualEpsilon(-Math.PI, CesiumMath.EPSILON9);
+        expect(CesiumMath.negativePiToPi(Math.PI)).toEqualEpsilon(Math.PI, CesiumMath.EPSILON9);
     });
 
     it('negativePiToPi negative', function() {
         expect(CesiumMath.negativePiToPi(-Math.PI / 0.5)).toEqualEpsilon(0.0, CesiumMath.EPSILON16);
         expect(CesiumMath.negativePiToPi(-(Math.PI / 2) * Math.PI)).toEqualEpsilon(-(Math.PI / 2) * Math.PI + CesiumMath.TWO_PI, CesiumMath.EPSILON16);
-        expect(CesiumMath.negativePiToPi(-(Math.PI + CesiumMath.EPSILON10))).toEqualEpsilon(-Math.PI, CesiumMath.EPSILON16);
+        expect(CesiumMath.negativePiToPi(-(Math.PI + CesiumMath.EPSILON10))).toEqualEpsilon(Math.PI, CesiumMath.EPSILON9);
+        expect(CesiumMath.negativePiToPi(-Math.PI)).toEqualEpsilon(-Math.PI, CesiumMath.EPSILON9);
     });
 
     it('negativePiToPi should not change', function() {
         expect(CesiumMath.negativePiToPi(Math.PI - 1)).toEqualEpsilon(Math.PI - 1, CesiumMath.EPSILON16);
         expect(CesiumMath.negativePiToPi(-Math.PI + 1)).toEqualEpsilon(-Math.PI + 1, CesiumMath.EPSILON16);
+    });
+
+    it('negativePiToPi throws for undefined', function() {
+        expect(function() {
+            CesiumMath.negativePiToPi();
+        }).toThrowDeveloperError();
+    });
+
+    it('zeroToTwoPi', function() {
+        expect(CesiumMath.zeroToTwoPi(0.0)).toEqualEpsilon(0.0, CesiumMath.EPSILON14);
+        expect(CesiumMath.zeroToTwoPi(Math.PI)).toEqualEpsilon(Math.PI, CesiumMath.EPSILON14);
+        expect(CesiumMath.zeroToTwoPi(CesiumMath.TWO_PI)).toEqualEpsilon(CesiumMath.TWO_PI, CesiumMath.EPSILON14);
+        expect(CesiumMath.zeroToTwoPi(3.0 * Math.PI)).toEqualEpsilon(Math.PI, CesiumMath.EPSILON14);
+        expect(CesiumMath.zeroToTwoPi(2.0 * CesiumMath.TWO_PI)).toEqualEpsilon(CesiumMath.TWO_PI, CesiumMath.EPSILON14);
+        expect(CesiumMath.zeroToTwoPi(-Math.PI)).toEqualEpsilon(Math.PI, CesiumMath.EPSILON14);
+        expect(CesiumMath.zeroToTwoPi(-CesiumMath.TWO_PI)).toEqualEpsilon(CesiumMath.TWO_PI, CesiumMath.EPSILON14);
+    });
+
+    it('zeroToTwoPi throws for undefined', function() {
+        expect(function() {
+            CesiumMath.zeroToTwoPi();
+        }).toThrowDeveloperError();
+    });
+
+    it('equalsEpsilon', function() {
+        expect(CesiumMath.equalsEpsilon(1.0, 1.0, 0.0)).toEqual(true);
+        expect(CesiumMath.equalsEpsilon(1.0, 1.0, 1.0)).toEqual(true);
+        expect(CesiumMath.equalsEpsilon(1.0, 1.0 + CesiumMath.EPSILON7, CesiumMath.EPSILON7)).toEqual(true);
+        expect(CesiumMath.equalsEpsilon(1.0, 1.0 + CesiumMath.EPSILON7, CesiumMath.EPSILON9)).toEqual(false);
+
+        expect(CesiumMath.equalsEpsilon(3000000.0, 3000000.0, 0.0)).toEqual(true);
+        expect(CesiumMath.equalsEpsilon(3000000.0, 3000000.0, CesiumMath.EPSILON7)).toEqual(true);
+        expect(CesiumMath.equalsEpsilon(3000000.0, 3000000.2, CesiumMath.EPSILON7)).toEqual(true);
+        expect(CesiumMath.equalsEpsilon(3000000.0, 3000000.2, CesiumMath.EPSILON9)).toEqual(false);
+    });
+
+    it('equalsEpsilon throws for undefined left', function() {
+        expect(function() {
+            CesiumMath.equalsEpsilon(undefined, 5.0, CesiumMath.EPSILON16);
+        }).toThrowDeveloperError();
+    });
+
+    it('equalsEpsilon throws for undefined right', function() {
+        expect(function() {
+            CesiumMath.equalsEpsilon(1.0, undefined, CesiumMath.EPSILON16);
+        }).toThrowDeveloperError();
+    });
+
+    it('equalsEpsilon throws for undefined relativeEpsilon', function() {
+        expect(function() {
+            CesiumMath.equalsEpsilon(1.0, 5.0, undefined);
+        }).toThrowDeveloperError();
+    });
+
+    it('equalsEpsilon throws for undefined', function() {
+        expect(function() {
+            CesiumMath.equalsEpsilon();
+        }).toThrowDeveloperError();
     });
 
     it('factorial produces the correct results', function() {
@@ -120,6 +247,12 @@ defineSuite([
         expect(CesiumMath.incrementWrap(5, 10, 0)).toEqual(6);
         expect(CesiumMath.incrementWrap(10, 10, 0)).toEqual(0);
         expect(CesiumMath.incrementWrap(10, 10)).toEqual(0);
+    });
+
+    it('incrementWrap throws for undefined', function() {
+        expect(function() {
+            CesiumMath.incrementWrap();
+        }).toThrowDeveloperError();
     });
 
     it('isPowerOfTwo finds powers of two', function() {
@@ -207,6 +340,70 @@ defineSuite([
     it('nextPowerOfTwo throws for undefined', function() {
         expect(function() {
             CesiumMath.nextPowerOfTwo();
+        }).toThrowDeveloperError();
+    });
+
+    it('clamp throws for undefined', function() {
+        expect(function() {
+            CesiumMath.clamp();
+        }).toThrowDeveloperError();
+    });
+
+    it('acosClamped returns acos for normal values', function() {
+        expect(CesiumMath.acosClamped(0.5)).toBe(Math.acos(0.5));
+        expect(CesiumMath.acosClamped(0.123)).toBe(Math.acos(0.123));
+        expect(CesiumMath.acosClamped(-0.123)).toBe(Math.acos(-0.123));
+        expect(CesiumMath.acosClamped(-1.0)).toBe(Math.acos(-1.0));
+        expect(CesiumMath.acosClamped(1.0)).toBe(Math.acos(1.0));
+    });
+
+    it('acosClamped returns acos of clamped value when value is outside the valid range', function() {
+        expect(CesiumMath.acosClamped(-1.01)).toBe(Math.acos(-1.0));
+        expect(CesiumMath.acosClamped(1.01)).toBe(Math.acos(1.0));
+    });
+
+    it('acosClamped throws without value', function() {
+        expect(function() {
+            CesiumMath.acosClamped();
+        }).toThrowDeveloperError();
+    });
+
+    it('asinClamped returns asin for normal values', function() {
+        expect(CesiumMath.asinClamped(0.5)).toBe(Math.asin(0.5));
+        expect(CesiumMath.asinClamped(0.123)).toBe(Math.asin(0.123));
+        expect(CesiumMath.asinClamped(-0.123)).toBe(Math.asin(-0.123));
+        expect(CesiumMath.asinClamped(-1.0)).toBe(Math.asin(-1.0));
+        expect(CesiumMath.asinClamped(1.0)).toBe(Math.asin(1.0));
+    });
+
+    it('asinClamped returns asin of clamped value when value is outside the valid range', function() {
+        expect(CesiumMath.asinClamped(-1.01)).toBe(Math.asin(-1.0));
+        expect(CesiumMath.asinClamped(1.01)).toBe(Math.asin(1.0));
+    });
+
+    it('asinClamped throws without value', function() {
+        expect(function() {
+            CesiumMath.asinClamped();
+        }).toThrowDeveloperError();
+    });
+
+    it('chordLength finds the chord length', function() {
+        expect(CesiumMath.chordLength(CesiumMath.PI_OVER_THREE, 1.0)).toEqualEpsilon(1.0, CesiumMath.EPSILON14);
+        expect(CesiumMath.chordLength(CesiumMath.PI_OVER_THREE, 5.0)).toEqualEpsilon(5.0, CesiumMath.EPSILON14);
+        expect(CesiumMath.chordLength(2.0 * CesiumMath.PI_OVER_THREE, 1.0)).toEqualEpsilon(Math.sqrt(3.0), CesiumMath.EPSILON14);
+        expect(CesiumMath.chordLength(2.0 * CesiumMath.PI_OVER_THREE, 5.0)).toEqualEpsilon(5.0 * Math.sqrt(3.0), CesiumMath.EPSILON14);
+        expect(CesiumMath.chordLength(CesiumMath.PI, 10.0)).toEqualEpsilon(2.0 * 10.0, CesiumMath.EPSILON14);
+    });
+
+    it('chordLength throws without angle', function() {
+        expect(function() {
+            CesiumMath.chordLength(undefined, 1.0);
+        }).toThrowDeveloperError();
+    });
+
+    it('chordLength throws without radius', function() {
+        expect(function() {
+            CesiumMath.chordLength(0.0, undefined);
         }).toThrowDeveloperError();
     });
 });

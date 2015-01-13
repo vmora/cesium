@@ -1,27 +1,27 @@
 /*global define*/
 define([
-        '../Core/defined',
-        '../Core/defineProperties',
-        '../Core/DeveloperError',
         '../Core/Cartesian2',
         '../Core/Cartesian3',
         '../Core/Cartesian4',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
         '../Core/Matrix4',
-        '../Scene/CullingVolume'
+        './CullingVolume'
     ], function(
-        defined,
-        defineProperties,
-        DeveloperError,
         Cartesian2,
         Cartesian3,
         Cartesian4,
+        defined,
+        defineProperties,
+        DeveloperError,
         Matrix4,
         CullingVolume) {
     "use strict";
 
     /**
      * The viewing frustum is defined by 6 planes.
-     * Each plane is represented by a {Cartesian4} object, where the x, y, and z components
+     * Each plane is represented by a {@link Cartesian4} object, where the x, y, and z components
      * define the unit vector normal to the plane, and the w component is the distance of the
      * plane from the origin/camera position.
      *
@@ -29,7 +29,7 @@ define([
      * @constructor
      *
      * @example
-     * var maxRadii = ellipsoid.getMaximumRadius();
+     * var maxRadii = ellipsoid.maximumRadius;
      *
      * var frustum = new Cesium.OrthographicFrustum();
      * frustum.right = maxRadii * Cesium.Math.PI;
@@ -89,7 +89,7 @@ define([
         this._far = this.far;
 
         this._cullingVolume = new CullingVolume();
-        this._orthographicMatrix = undefined;
+        this._orthographicMatrix = new Matrix4();
     };
 
     function update(frustum) {
@@ -129,8 +129,8 @@ define([
 
     defineProperties(OrthographicFrustum.prototype, {
         /**
-         * The orthographic projection matrix computed from the view frustum.
-         * @memberof OrthographicFrustum
+         * Gets the orthographic projection matrix computed from the view frustum.
+         * @memberof OrthographicFrustum.prototype
          * @type {Matrix4}
          */
         projectionMatrix : {
@@ -149,22 +149,15 @@ define([
     /**
      * Creates a culling volume for this frustum.
      *
-     * @memberof OrthographicFrustum
-     *
      * @param {Cartesian3} position The eye position.
      * @param {Cartesian3} direction The view direction.
      * @param {Cartesian3} up The up direction.
-     *
-     * @exception {DeveloperError} position is required.
-     * @exception {DeveloperError} direction is required.
-     * @exception {DeveloperError} up is required.
-     *
      * @returns {CullingVolume} A culling volume at the given position and orientation.
      *
      * @example
      * // Check if a bounding volume intersects the frustum.
      * var cullingVolume = frustum.computeCullingVolume(cameraPosition, cameraDirection, cameraUp);
-     * var intersect = cullingVolume.getVisibility(boundingVolume);
+     * var intersect = cullingVolume.computeVisibility(boundingVolume);
      */
     OrthographicFrustum.prototype.computeCullingVolume = function(position, direction, up) {
         //>>includeStart('debug', pragmas.debug);
@@ -275,14 +268,11 @@ define([
     /**
      * Returns the pixel's width and height in meters.
      *
-     * @memberof OrthographicFrustum
-     *
      * @param {Cartesian2} drawingBufferDimensions A {@link Cartesian2} with width and height in the x and y properties, respectively.
      * @param {Number} [distance=near plane distance] The distance to the near plane in meters.
      * @param {Cartesian2} [result] The object onto which to store the result.
      * @returns {Cartesian2} The modified result parameter or a new instance of {@link Cartesian2} with the pixel's width and height in the x and y properties, respectively.
      *
-     * @exception {DeveloperError} drawingBufferDimensions is required.
      * @exception {DeveloperError} drawingBufferDimensions.x must be greater than zero.
      * @exception {DeveloperError} drawingBufferDimensions.y must be greater than zero.
      *
@@ -322,7 +312,6 @@ define([
 
     /**
      * Returns a duplicate of a OrthographicFrustum instance.
-     * @memberof OrthographicFrustum
      *
      * @param {OrthographicFrustum} [result] The object onto which to store the result.
      * @returns {OrthographicFrustum} The modified result parameter or a new PerspectiveFrustum instance if one was not provided.
@@ -353,8 +342,6 @@ define([
     /**
      * Compares the provided OrthographicFrustum componentwise and returns
      * <code>true</code> if they are equal, <code>false</code> otherwise.
-     *
-     * @memberof OrthographicFrustum
      *
      * @param {OrthographicFrustum} [other] The right hand side OrthographicFrustum.
      * @returns {Boolean} <code>true</code> if they are equal, <code>false</code> otherwise.

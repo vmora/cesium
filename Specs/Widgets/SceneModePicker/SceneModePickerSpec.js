@@ -1,16 +1,14 @@
 /*global defineSuite*/
 defineSuite([
-         'Widgets/SceneModePicker/SceneModePicker',
-         'Scene/SceneTransitioner',
-         'Specs/createScene',
-         'Specs/destroyScene',
-         'Specs/EventHelper'
-     ], function(
-         SceneModePicker,
-         SceneTransitioner,
-         createScene,
-         destroyScene,
-         EventHelper) {
+        'Widgets/SceneModePicker/SceneModePicker',
+        'Specs/createScene',
+        'Specs/destroyScene',
+        'Specs/DomEventSimulator'
+    ], function(
+        SceneModePicker,
+        createScene,
+        destroyScene,
+        DomEventSimulator) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -29,7 +27,7 @@ defineSuite([
         container.id = 'testContainer';
         document.body.appendChild(container);
 
-        var widget = new SceneModePicker('testContainer', new SceneTransitioner(scene));
+        var widget = new SceneModePicker('testContainer', scene);
         expect(widget.container).toBe(container);
         expect(widget.isDestroyed()).toEqual(false);
 
@@ -44,14 +42,14 @@ defineSuite([
         container.id = 'testContainer';
         document.body.appendChild(container);
 
-        var widget = new SceneModePicker('testContainer', new SceneTransitioner(scene));
+        var widget = new SceneModePicker('testContainer', scene);
 
         widget.viewModel.dropDownVisible = true;
-        EventHelper.fireMouseDown(document.body);
+        DomEventSimulator.fireMouseDown(document.body);
         expect(widget.viewModel.dropDownVisible).toEqual(false);
 
         widget.viewModel.dropDownVisible = true;
-        EventHelper.fireMouseDown(container.firstChild);
+        DomEventSimulator.fireMouseDown(container.firstChild);
         expect(widget.viewModel.dropDownVisible).toEqual(true);
 
         widget.destroy();
@@ -63,14 +61,14 @@ defineSuite([
         container.id = 'testContainer';
         document.body.appendChild(container);
 
-        var widget = new SceneModePicker('testContainer', new SceneTransitioner(scene));
+        var widget = new SceneModePicker('testContainer', scene);
 
         widget.viewModel.dropDownVisible = true;
-        EventHelper.fireTouchStart(document.body);
+        DomEventSimulator.fireTouchStart(document.body);
         expect(widget.viewModel.dropDownVisible).toEqual(false);
 
         widget.viewModel.dropDownVisible = true;
-        EventHelper.fireTouchStart(container.firstChild);
+        DomEventSimulator.fireTouchStart(container.firstChild);
         expect(widget.viewModel.dropDownVisible).toEqual(true);
 
         widget.destroy();
@@ -85,13 +83,13 @@ defineSuite([
 
     it('constructor throws with no element', function() {
         expect(function() {
-            return new SceneModePicker(undefined, new SceneTransitioner(scene));
+            return new SceneModePicker(undefined, scene);
         }).toThrowDeveloperError();
     });
 
     it('constructor throws with string element that does not exist', function() {
         expect(function() {
-            return new SceneModePicker('does not exist', new SceneTransitioner(scene));
+            return new SceneModePicker('does not exist', scene);
         }).toThrowDeveloperError();
     });
 }, 'WebGL');

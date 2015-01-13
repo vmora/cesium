@@ -1,28 +1,21 @@
 /*global define*/
 define([
-        '../Core/PolylineVolumeGeometry',
+        '../Core/defined',
         '../Core/Ellipsoid',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/PolylineVolumeGeometry'
     ], function(
-        PolylineVolumeGeometry,
+        defined,
         Ellipsoid,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        PolylineVolumeGeometry) {
     "use strict";
 
-    function createPolylineVolumeGeometry(parameters, transferableObjects) {
-        var polylineVolumeGeometry = parameters.geometry;
+    function createPolylineVolumeGeometry(polylineVolumeGeometry, offset) {
+        if (defined(offset)) {
+            polylineVolumeGeometry = PolylineVolumeGeometry.unpack(polylineVolumeGeometry, offset);
+        }
         polylineVolumeGeometry._ellipsoid = Ellipsoid.clone(polylineVolumeGeometry._ellipsoid);
-
-        var geometry = PolylineVolumeGeometry.createGeometry(polylineVolumeGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
+        return PolylineVolumeGeometry.createGeometry(polylineVolumeGeometry);
     }
 
-    return createTaskProcessorWorker(createPolylineVolumeGeometry);
+    return createPolylineVolumeGeometry;
 });

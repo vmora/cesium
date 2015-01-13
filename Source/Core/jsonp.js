@@ -1,19 +1,23 @@
 /*global define*/
 define([
+        '../ThirdParty/Uri',
+        '../ThirdParty/when',
+        './combine',
         './defaultValue',
         './defined',
         './DeveloperError',
-        '../ThirdParty/when'
+        './objectToQuery',
+        './queryToObject'
     ], function(
+        Uri,
+        when,
+        combine,
         defaultValue,
         defined,
         DeveloperError,
-        when) {
+        objectToQuery,
+        queryToObject) {
     "use strict";
-
-    function pushQueryParameter(array, name, value) {
-        array.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
-    }
 
     /**
      * Requests a resource using JSONP.
@@ -21,19 +25,19 @@ define([
      * @exports jsonp
      *
      * @param {String} url The URL to request.
+     * @param {Object} [options] Object with the following properties:
      * @param {Object} [options.parameters] Any extra query parameters to append to the URL.
      * @param {String} [options.callbackParameterName='callback'] The callback parameter name that the server expects.
      * @param {Object} [options.proxy] A proxy to use for the request. This object is expected to have a getURL function which returns the proxied URL, if needed.
-     *
      * @returns {Object} a promise that will resolve to the requested data when loaded.
      *
-     * @see <a href='http://wiki.commonjs.org/wiki/Promises/A'>CommonJS Promises/A</a>
+     * @see {@link http://wiki.commonjs.org/wiki/Promises/A|CommonJS Promises/A}
      *
      * @example
      * // load a data asynchronously
      * Cesium.jsonp('some/webservice').then(function(data) {
      *     // use the loaded data
-     * }, function() {
+     * }).otherwise(function(error) {
      *     // an error occurred
      * });
      */
@@ -46,13 +50,13 @@ define([
 
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
-        var deferred = when.defer();
-
         //generate a unique function name
         var functionName;
         do {
             functionName = 'jsonp' + Math.random().toString().substring(2, 8);
         } while (defined(window[functionName]));
+
+        var deferred = when.defer();
 
         //assign a function with that name in the global scope
         window[functionName] = function(data) {
@@ -65,26 +69,20 @@ define([
             }
         };
 
+        var uri = new Uri(url);
+
+        var queryOptions = queryToObject(defaultValue(uri.query, ''));
+
+        if (defined(options.parameters)) {
+            queryOptions = combine(options.parameters, queryOptions);
+        }
+
         var callbackParameterName = defaultValue(options.callbackParameterName, 'callback');
-        var queryParts = [];
-        pushQueryParameter(queryParts, callbackParameterName, functionName);
+        queryOptions[callbackParameterName] = functionName;
 
-        var parameters = defaultValue(options.parameters, defaultValue.EMPTY_OBJECT);
-        for ( var name in parameters) {
-            if (parameters.hasOwnProperty(name)) {
-                pushQueryParameter(queryParts, name, parameters[name]);
-            }
-        }
+        uri.query = objectToQuery(queryOptions);
 
-        if (queryParts.length > 0) {
-            if (url.indexOf('?') === -1) {
-                url += '?';
-            } else {
-                url += '&';
-            }
-
-            url += queryParts.join('&');
-        }
+        url = uri.toString();
 
         var proxy = options.proxy;
         if (defined(proxy)) {

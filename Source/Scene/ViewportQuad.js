@@ -1,40 +1,26 @@
 /*global define*/
 define([
-        '../Core/Color',
-        '../Core/destroyObject',
-        '../Core/defined',
-        '../Core/DeveloperError',
         '../Core/BoundingRectangle',
-        '../Core/ComponentDatatype',
-        '../Core/PrimitiveType',
-        '../Core/Geometry',
-        '../Core/GeometryAttribute',
+        '../Core/Color',
+        '../Core/defined',
+        '../Core/destroyObject',
+        '../Core/DeveloperError',
+        '../Renderer/ShaderSource',
+        '../Shaders/ViewportQuadFS',
+        './BlendingState',
         './Material',
-        '../Renderer/BufferUsage',
-        '../Renderer/BlendingState',
-        '../Renderer/DrawCommand',
-        '../Renderer/createShaderSource',
-        '../Renderer/Pass',
-        '../Shaders/ViewportQuadVS',
-        '../Shaders/ViewportQuadFS'
+        './Pass'
     ], function(
-        Color,
-        destroyObject,
-        defined,
-        DeveloperError,
         BoundingRectangle,
-        ComponentDatatype,
-        PrimitiveType,
-        Geometry,
-        GeometryAttribute,
-        Material,
-        BufferUsage,
+        Color,
+        defined,
+        destroyObject,
+        DeveloperError,
+        ShaderSource,
+        ViewportQuadFS,
         BlendingState,
-        DrawCommand,
-        createShaderSource,
-        Pass,
-        ViewportQuadVS,
-        ViewportQuadFS) {
+        Material,
+        Pass) {
     "use strict";
 
     /**
@@ -51,13 +37,6 @@ define([
      * viewportQuad.material.uniforms.color = new Cesium.Color(1.0, 0.0, 0.0, 1.0);
      */
     var ViewportQuad = function(rectangle, material) {
-
-        this._va = undefined;
-        this._overlayCommand = new DrawCommand();
-        this._overlayCommand.primitiveType = PrimitiveType.TRIANGLE_FAN;
-        this._overlayCommand.pass = Pass.OVERLAY;
-        this._overlayCommand.owner = this;
-
         /**
          * Determines if the viewport quad primitive will be shown.
          *
@@ -81,13 +60,14 @@ define([
         this.rectangle = BoundingRectangle.clone(rectangle);
 
         if (!defined(material)) {
-            material = Material.fromType(Material.ColorType);
-            material.uniforms.color = new Color(1.0, 1.0, 1.0, 1.0);
+            material = Material.fromType(Material.ColorType, {
+                color : new Color(1.0, 1.0, 1.0, 1.0)
+            });
         }
 
         /**
          * The surface appearance of the viewport quad.  This can be one of several built-in {@link Material} objects or a custom material, scripted with
-         * <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>.
+         * {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}.
          * <p>
          * The default material is <code>Material.ColorType</code>.
          * </p>
@@ -101,66 +81,22 @@ define([
          * // 2. Change material to horizontal stripes
          * viewportQuad.material = Cesium.Material.fromType(Material.StripeType);
          *
-         * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+         * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
          */
         this.material = material;
         this._material = undefined;
+
+        this._overlayCommand = undefined;
+        this._rs = undefined;
     };
-
-    var attributeLocations = {
-        position : 0,
-        textureCoordinates : 1
-    };
-
-    function getVertexArray(context) {
-        // Per-context cache for viewport quads
-        var vertexArray = context.cache.viewportQuad_vertexArray;
-
-        if (defined(vertexArray)) {
-            return vertexArray;
-        }
-
-        var geometry = new Geometry({
-            attributes : {
-                position : new GeometryAttribute({
-                    componentDatatype : ComponentDatatype.FLOAT,
-                    componentsPerAttribute : 2,
-                    values : [
-                       -1.0, -1.0,
-                        1.0, -1.0,
-                        1.0,  1.0,
-                       -1.0,  1.0
-                    ]
-                }),
-
-                textureCoordinates : new GeometryAttribute({
-                    componentDatatype : ComponentDatatype.FLOAT,
-                    componentsPerAttribute : 2,
-                    values : [
-                        0.0, 0.0,
-                        1.0, 0.0,
-                        1.0, 1.0,
-                        0.0, 1.0
-                    ]
-                })
-            },
-            primitiveType : PrimitiveType.TRIANGLES
-        });
-
-        vertexArray = context.createVertexArrayFromGeometry({
-            geometry : geometry,
-            attributeLocations : attributeLocations,
-            bufferUsage : BufferUsage.STATIC_DRAW
-        });
-
-        context.cache.viewportQuad_vertexArray = vertexArray;
-        return vertexArray;
-    }
 
     /**
-     * Commits changes to properties before rendering by updating the object's WebGL resources.
-     *
-     * @memberof ViewportQuad
+     * Called when {@link Viewer} or {@link CesiumWidget} render the scene to
+     * get the draw commands needed to render this primitive.
+     * <p>
+     * Do not call this function directly.  This is documented just to
+     * list the exceptions that may be propagated when the scene is rendered:
+     * </p>
      *
      * @exception {DeveloperError} this.material must be defined.
      * @exception {DeveloperError} this.rectangle must be defined.
@@ -179,14 +115,9 @@ define([
         }
         //>>includeEnd('debug');
 
-        if (!defined(this._va)) {
-            this._va = getVertexArray(context);
-            this._overlayCommand.vertexArray = this._va;
-        }
-
-        var rs = this._overlayCommand.renderState;
+        var rs = this._rs;
         if ((!defined(rs)) || !BoundingRectangle.equals(rs.viewport, this.rectangle)) {
-            this._overlayCommand.renderState = context.createRenderState({
+            this._rs = context.createRenderState({
                 blending : BlendingState.ALPHA_BLEND,
                 viewport : this.rectangle
             });
@@ -194,13 +125,23 @@ define([
 
         var pass = frameState.passes;
         if (pass.render) {
-            if (this._material !== this.material) {
+            if (this._material !== this.material || !defined(this._overlayCommand)) {
                 // Recompile shader when material changes
                 this._material = this.material;
 
-                var fsSource = createShaderSource({ sources : [this._material.shaderSource, ViewportQuadFS] });
-                this._overlayCommand.shaderProgram = context.getShaderCache().replaceShaderProgram(
-                    this._overlayCommand.shaderProgram, ViewportQuadVS, fsSource, attributeLocations);
+                if (defined(this._overlayCommand)) {
+                    this._overlayCommand.shaderProgram.destroy();
+                }
+
+                var fs = new ShaderSource({
+                    sources : [this._material.shaderSource, ViewportQuadFS]
+                });
+                this._overlayCommand = context.createViewportQuadCommand(fs, {
+                    renderState : this._rs,
+                    uniformMap : this._material._uniforms,
+                    owner : this
+                });
+                this._overlayCommand.pass = Pass.OVERLAY;
             }
 
             this._material.update(context);
@@ -215,8 +156,6 @@ define([
      * <br /><br />
      * If this object was destroyed, it should not be used; calling any function other than
      * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
-     *
-     * @memberof ViewportQuad
      *
      * @returns {Boolean} True if this object was destroyed; otherwise, false.
      *
@@ -234,8 +173,6 @@ define([
      * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.  Therefore,
      * assign the return value (<code>undefined</code>) to the object as done in the example.
      *
-     * @memberof ViewportQuad
-     *
      * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
@@ -246,7 +183,9 @@ define([
      * quad = quad && quad.destroy();
      */
     ViewportQuad.prototype.destroy = function() {
-        this._overlayCommand.shaderProgram = this._overlayCommand.shaderProgram && this._overlayCommand.shaderProgram.release();
+        if (defined(this._overlayCommand)) {
+            this._overlayCommand.shaderProgram = this._overlayCommand.shaderProgram && this._overlayCommand.shaderProgram.destroy();
+        }
         return destroyObject(this);
     };
 

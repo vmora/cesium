@@ -1,39 +1,39 @@
 /*global define*/
 define([
+        './BoundingSphere',
+        './Cartesian3',
+        './ComponentDatatype',
+        './CornerType',
+        './CorridorGeometryLibrary',
         './defaultValue',
         './defined',
         './DeveloperError',
-        './Cartesian3',
-        './CornerType',
-        './CorridorGeometryLibrary',
-        './ComponentDatatype',
         './Ellipsoid',
         './Geometry',
+        './GeometryAttribute',
+        './GeometryAttributes',
         './IndexDatatype',
         './Math',
         './PolylinePipeline',
         './PrimitiveType',
-        './BoundingSphere',
-        './GeometryAttribute',
-        './GeometryAttributes',
         './VertexFormat'
     ], function(
+        BoundingSphere,
+        Cartesian3,
+        ComponentDatatype,
+        CornerType,
+        CorridorGeometryLibrary,
         defaultValue,
         defined,
         DeveloperError,
-        Cartesian3,
-        CornerType,
-        CorridorGeometryLibrary,
-        ComponentDatatype,
         Ellipsoid,
         Geometry,
+        GeometryAttribute,
+        GeometryAttributes,
         IndexDatatype,
         CesiumMath,
         PolylinePipeline,
         PrimitiveType,
-        BoundingSphere,
-        GeometryAttribute,
-        GeometryAttributes,
         VertexFormat) {
     "use strict";
 
@@ -573,9 +573,9 @@ define([
         extrudedPositions.set(positions);
         var wallPositions = new Float64Array(length * 4);
 
-        positions = PolylinePipeline.scaleToGeodeticHeight(positions, height, ellipsoid, positions);
+        positions = CorridorGeometryLibrary.scaleToGeodeticHeight(positions, height, ellipsoid, positions);
         wallPositions = addWallPositions(positions, 0, wallPositions);
-        extrudedPositions = PolylinePipeline.scaleToGeodeticHeight(extrudedPositions, extrudedHeight, ellipsoid, extrudedPositions);
+        extrudedPositions = CorridorGeometryLibrary.scaleToGeodeticHeight(extrudedPositions, extrudedHeight, ellipsoid, extrudedPositions);
         wallPositions = addWallPositions(extrudedPositions, length * 2, wallPositions);
         newPositions.set(positions);
         newPositions.set(extrudedPositions, length);
@@ -626,27 +626,25 @@ define([
      * @alias CorridorGeometry
      * @constructor
      *
-     * @param {Array} options.positions An array of {Cartesain3} positions that define the center of the corridor.
+     * @param {Object} options Object with the following properties:
+     * @param {Cartesian3[]} options.positions An array of positions that define the center of the corridor.
      * @param {Number} options.width The distance between the edges of the corridor in meters.
      * @param {Ellipsoid} [options.ellipsoid=Ellipsoid.WGS84] The ellipsoid to be used as a reference.
      * @param {Number} [options.granularity=CesiumMath.RADIANS_PER_DEGREE] The distance, in radians, between each latitude and longitude. Determines the number of positions in the buffer.
      * @param {Number} [options.height=0] The distance in meters between the ellipsoid surface and the positions.
      * @param {Number} [options.extrudedHeight] The distance in meters between the ellipsoid surface and the extrusion.
      * @param {VertexFormat} [options.vertexFormat=VertexFormat.DEFAULT] The vertex attributes to be computed.
-     * @param {Boolean} [options.cornerType = CornerType.ROUNDED] Determines the style of the corners.
+     * @param {CornerType} [options.cornerType=CornerType.ROUNDED] Determines the style of the corners.
      *
-     * @exception {DeveloperError} options.positions is required.
-     * @exception {DeveloperError} options.width is required.
+     * @see CorridorGeometry.createGeometry
+     * @see Packable
      *
-     * @see CorridorGeometry#createGeometry
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Corridor.html|Cesium Sandcastle Corridor Demo}
      *
      * @example
      * var corridor = new Cesium.CorridorGeometry({
      *   vertexFormat : Cesium.VertexFormat.POSITION_ONLY,
-     *   positions : ellipsoid.cartographicArrayToCartesianArray([
-     *         Cesium.Cartographic.fromDegrees(-72.0, 40.0),
-     *         Cesium.Cartographic.fromDegrees(-70.0, 35.0)
-     *     ]),
+     *   positions : Cesium.Cartesian3.fromDegreesArray([-72.0, 40.0, -70.0, 35.0]),
      *   width : 100000
      * });
      */
@@ -665,38 +663,153 @@ define([
         //>>includeEnd('debug');
 
         this._positions = positions;
+        this._ellipsoid = Ellipsoid.clone(defaultValue(options.ellipsoid, Ellipsoid.WGS84));
+        this._vertexFormat = VertexFormat.clone(defaultValue(options.vertexFormat, VertexFormat.DEFAULT));
         this._width = width;
-        this._ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84);
         this._height = defaultValue(options.height, 0);
         this._extrudedHeight = defaultValue(options.extrudedHeight, this._height);
         this._cornerType = defaultValue(options.cornerType, CornerType.ROUNDED);
-        this._vertexFormat = defaultValue(options.vertexFormat, VertexFormat.DEFAULT);
         this._granularity = defaultValue(options.granularity, CesiumMath.RADIANS_PER_DEGREE);
         this._workerName = 'createCorridorGeometry';
+
+        /**
+         * The number of elements used to pack the object into an array.
+         * @type {Number}
+         */
+        this.packedLength = 1 + positions.length * Cartesian3.packedLength + Ellipsoid.packedLength + VertexFormat.packedLength + 5;
+    };
+
+    /**
+     * Stores the provided instance into the provided array.
+     * @function
+     *
+     * @param {Object} value The value to pack.
+     * @param {Number[]} array The array to pack into.
+     * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+     */
+    CorridorGeometry.pack = function(value, array, startingIndex) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(value)) {
+            throw new DeveloperError('value is required');
+        }
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        var positions = value._positions;
+        var length = positions.length;
+        array[startingIndex++] = length;
+
+        for (var i = 0; i < length; ++i, startingIndex += Cartesian3.packedLength) {
+            Cartesian3.pack(positions[i], array, startingIndex);
+        }
+
+        Ellipsoid.pack(value._ellipsoid, array, startingIndex);
+        startingIndex += Ellipsoid.packedLength;
+
+        VertexFormat.pack(value._vertexFormat, array, startingIndex);
+        startingIndex += VertexFormat.packedLength;
+
+        array[startingIndex++] = value._width;
+        array[startingIndex++] = value._height;
+        array[startingIndex++] = value._extrudedHeight;
+        array[startingIndex++] = value._cornerType;
+        array[startingIndex]   = value._granularity;
+    };
+
+    var scratchEllipsoid = Ellipsoid.clone(Ellipsoid.UNIT_SPHERE);
+    var scratchVertexFormat = new VertexFormat();
+    var scratchOptions = {
+        positions : undefined,
+        ellipsoid : scratchEllipsoid,
+        vertexFormat : scratchVertexFormat,
+        width : undefined,
+        height : undefined,
+        extrudedHeight : undefined,
+        cornerType : undefined,
+        granularity : undefined
+    };
+
+    /**
+     * Retrieves an instance from a packed array.
+     *
+     * @param {Number[]} array The packed array.
+     * @param {Number} [startingIndex=0] The starting index of the element to be unpacked.
+     * @param {CorridorGeometry} [result] The object into which to store the result.
+     */
+    CorridorGeometry.unpack = function(array, startingIndex, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        var length = array[startingIndex++];
+        var positions = new Array(length);
+
+        for (var i = 0; i < length; ++i, startingIndex += Cartesian3.packedLength) {
+            positions[i] = Cartesian3.unpack(array, startingIndex);
+        }
+
+        var ellipsoid = Ellipsoid.unpack(array, startingIndex, scratchEllipsoid);
+        startingIndex += Ellipsoid.packedLength;
+
+        var vertexFormat = VertexFormat.unpack(array, startingIndex, scratchVertexFormat);
+        startingIndex += VertexFormat.packedLength;
+
+        var width = array[startingIndex++];
+        var height = array[startingIndex++];
+        var extrudedHeight = array[startingIndex++];
+        var cornerType = array[startingIndex++];
+        var granularity = array[startingIndex];
+
+        if (!defined(result)) {
+            scratchOptions.positions = positions;
+            scratchOptions.width = width;
+            scratchOptions.height = height;
+            scratchOptions.extrudedHeight = extrudedHeight;
+            scratchOptions.cornerType = cornerType;
+            scratchOptions.granularity = granularity;
+            return new CorridorGeometry(scratchOptions);
+        }
+
+        result._positions = positions;
+        result._ellipsoid = Ellipsoid.clone(ellipsoid, result._ellipsoid);
+        result._vertexFormat = VertexFormat.clone(vertexFormat, result._vertexFormat);
+        result._width = width;
+        result._height = height;
+        result._extrudedHeight = extrudedHeight;
+        result._cornerType = cornerType;
+        result._granularity = granularity;
+
+        return result;
     };
 
     /**
      * Computes the geometric representation of a corridor, including its vertices, indices, and a bounding sphere.
-     * @memberof CorridorGeometry
      *
      * @param {CorridorGeometry} corridorGeometry A description of the corridor.
-     *
-     * @returns {Geometry} The computed vertices and indices.
-     *
-     * @exception {DeveloperError} Count of unique positions must be greater than 1.
+     * @returns {Geometry|undefined} The computed vertices and indices.
      */
     CorridorGeometry.createGeometry = function(corridorGeometry) {
         var positions = corridorGeometry._positions;
         var height = corridorGeometry._height;
         var extrudedHeight = corridorGeometry._extrudedHeight;
         var extrude = (height !== extrudedHeight);
-        var cleanPositions = PolylinePipeline.removeDuplicates(positions);
 
-        //>>includeStart('debug', pragmas.debug);
-        if (cleanPositions.length < 2) {
-            throw new DeveloperError('Count of unique positions must be greater than 1.');
+        var cleanPositions = PolylinePipeline.removeDuplicates(positions);
+        if (!defined(cleanPositions)) {
+            cleanPositions = positions;
         }
-        //>>includeEnd('debug');
+
+        if (cleanPositions.length < 2) {
+            return undefined;
+        }
 
         var ellipsoid = corridorGeometry._ellipsoid;
         var vertexFormat = corridorGeometry._vertexFormat;
@@ -719,7 +832,7 @@ define([
         } else {
             var computedPositions = CorridorGeometryLibrary.computePositions(params);
             attr = combine(computedPositions, vertexFormat, ellipsoid);
-            attr.attributes.position.values = PolylinePipeline.scaleToGeodeticHeight(attr.attributes.position.values, height, ellipsoid, attr.attributes.position.values);
+            attr.attributes.position.values = CorridorGeometryLibrary.scaleToGeodeticHeight(attr.attributes.position.values, height, ellipsoid, attr.attributes.position.values);
         }
         var attributes = attr.attributes;
         var boundingSphere = BoundingSphere.fromVertices(attributes.position.values, undefined, 3);

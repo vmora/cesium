@@ -1,28 +1,21 @@
 /*global define*/
 define([
         '../Core/CorridorGeometry',
-        '../Core/Ellipsoid',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/defined',
+        '../Core/Ellipsoid'
     ], function(
         CorridorGeometry,
-        Ellipsoid,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        defined,
+        Ellipsoid) {
     "use strict";
 
-    function createCorridorGeometry(parameters, transferableObjects) {
-        var corridorGeometry = parameters.geometry;
+    function createCorridorGeometry(corridorGeometry, offset) {
+        if (defined(offset)) {
+            corridorGeometry = CorridorGeometry.unpack(corridorGeometry, offset);
+        }
         corridorGeometry._ellipsoid = Ellipsoid.clone(corridorGeometry._ellipsoid);
-
-        var geometry = CorridorGeometry.createGeometry(corridorGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
+        return CorridorGeometry.createGeometry(corridorGeometry);
     }
 
-    return createTaskProcessorWorker(createCorridorGeometry);
+    return createCorridorGeometry;
 });

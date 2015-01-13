@@ -1,24 +1,16 @@
 /*global define*/
 define([
         '../Core/BoxGeometry',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/defined'
     ], function(
         BoxGeometry,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        defined) {
     "use strict";
 
-    function createBoxGeometry(parameters, transferableObjects) {
-        var boxGeometry = parameters.geometry;
-        var geometry = BoxGeometry.createGeometry(boxGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
-    }
-
-    return createTaskProcessorWorker(createBoxGeometry);
+    return function(boxGeometry, offset) {
+        if (defined(offset)) {
+            boxGeometry = BoxGeometry.unpack(boxGeometry, offset);
+        }
+        return BoxGeometry.createGeometry(boxGeometry);
+    };
 });

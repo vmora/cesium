@@ -1,27 +1,23 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/PolygonPipeline',
-         'Core/Cartesian2',
-         'Core/Cartesian3',
-         'Core/Cartographic',
-         'Core/Ellipsoid',
-         'Core/WindingOrder',
-         'Core/Math',
-         'Core/Shapes'
-     ], function(
-         PolygonPipeline,
-         Cartesian2,
-         Cartesian3,
-         Cartographic,
-         Ellipsoid,
-         WindingOrder,
-         CesiumMath,
-         Shapes) {
+        'Core/PolygonPipeline',
+        'Core/Cartesian2',
+        'Core/Cartesian3',
+        'Core/Ellipsoid',
+        'Core/Math',
+        'Core/WindingOrder'
+    ], function(
+        PolygonPipeline,
+        Cartesian2,
+        Cartesian3,
+        Ellipsoid,
+        CesiumMath,
+        WindingOrder) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     beforeEach(function() {
-        PolygonPipeline.resetSeed();
+        CesiumMath.setRandomNumberSeed(0.0);
     });
 
     it('removeDuplicates removes duplicate points', function() {
@@ -176,10 +172,7 @@ defineSuite([
                          new Cartesian2(2,6), new Cartesian2(6,6), new Cartesian2(6,9), new Cartesian2(0,9)];
 
         var indices = PolygonPipeline.triangulate(positions);
-        expect(indices).toEqual([ 0, 4, 7, 0, 3, 4, 0, 2, 3, 4, 6, 7, 4, 5, 6, 0, 1, 2 ]);
-
-        indices = PolygonPipeline.triangulate(positions);
-        expect(indices).toEqual([ 0, 3, 7, 0, 1, 3, 1, 2, 3, 3, 4, 7, 4, 5, 7, 5, 6, 7 ]);
+        expect(indices).toEqual([ 0, 3, 7, 0, 2, 3, 0, 1, 2, 3, 4, 7, 4, 6, 7, 4, 5, 6 ]);
 
         /* Do it a few times to make sure we never get stuck on it */
         for (var i = 0; i < 30; i++) {
@@ -201,14 +194,11 @@ defineSuite([
      * 0           1
      */
     it('triangulates a convex polygon with vertical and horizontal sides', function() {
-        var positions = [new Cartesian2(0,0), new Cartesian2(6,0), new Cartesian2(6,3), new Cartesian2(2,3),
-                         new Cartesian2(2,6), new Cartesian2(6,6), new Cartesian2(6,9), new Cartesian2(0,9)];
+        var positions = [new Cartesian2(0,0), new Cartesian2(6,0), new Cartesian2(6,3), new Cartesian2(8,3),
+                         new Cartesian2(8,6), new Cartesian2(6,6), new Cartesian2(6,9), new Cartesian2(0,9)];
 
         var indices = PolygonPipeline.triangulate(positions);
-        expect(indices).toEqual([ 0, 4, 7, 0, 3, 4, 0, 2, 3, 4, 6, 7, 4, 5, 6, 0, 1, 2 ]);
-
-        indices = PolygonPipeline.triangulate(positions);
-        expect(indices).toEqual([ 0, 3, 7, 0, 1, 3, 1, 2, 3, 3, 4, 7, 4, 5, 7, 5, 6, 7 ]);
+        expect(indices).toEqual([ 0, 2, 7, 0, 1, 2, 2, 3, 7, 3, 5, 7, 5, 6, 7, 3, 4, 5 ]);
 
         /* Do it a few times to make sure we never get stuck on it */
         for (var i = 0; i < 30; i++) {
@@ -222,17 +212,17 @@ defineSuite([
                 new Cartesian2(0.0, 1.0), new Cartesian2(1.9, 0.5)];
 
         var indices = PolygonPipeline.triangulate(positions);
-
         expect(indices).toEqual([ 0, 1, 7, 1, 2, 7, 2, 3, 7, 3, 6, 7, 3, 5, 6, 3, 4, 5 ]);
     });
+
     it('triangulates an even more complicated concave', function() {
         var positions = [new Cartesian2(0,0), new Cartesian2(1,0), new Cartesian2(1, -1), new Cartesian2(2, -1.4),
                     new Cartesian2(40, 2), new Cartesian2(10, 5), new Cartesian2(30, 10), new Cartesian2(25, 20),
                     new Cartesian2(20,20), new Cartesian2(10,15), new Cartesian2(15, 10), new Cartesian2(8, 10),
                     new Cartesian2(-1, 3)];
-        var indices = PolygonPipeline.triangulate(positions);
 
-        expect(indices).toEqual([ 0, 11, 12, 0, 10, 11, 0, 5, 10, 5, 6, 10, 6, 8, 10, 8, 9, 10, 6, 7, 8, 0, 4, 5, 0, 1, 4, 1, 3, 4, 1, 2, 3 ]);
+        var indices = PolygonPipeline.triangulate(positions);
+        expect(indices).toEqual([ 0, 1, 12, 1, 5, 12, 1, 4, 5, 1, 2, 4, 5, 11, 12, 2, 3, 4, 5, 10, 11, 5, 6, 10, 6, 9, 10, 6, 7, 9, 7, 8, 9 ]);
 
         /* Try it a bunch of times to make sure we can never get stuck on it */
         for (var i = 0; i < 50; i++) {
@@ -251,9 +241,9 @@ defineSuite([
      */
     it('triangulates a polygon with a side that intersects on of its other vertices', function() {
         var positions = [new Cartesian2(0,0), new Cartesian2(0, -5), new Cartesian2(2,0), new Cartesian2(4, -5), new Cartesian2(4, 0)];
-        var indices = PolygonPipeline.triangulate(positions);
 
-        expect(indices).toEqual([ 2, 3, 4, 0, 1, 2 ]);
+        var indices = PolygonPipeline.triangulate(positions);
+        expect(indices).toEqual([ 0, 1, 2, 2, 3, 4 ]);
     });
 
     /*
@@ -268,8 +258,8 @@ defineSuite([
     it('triangulates a polygon with a side that intersects on of its other vertices and superfluous vertices', function() {
         var positions = [ new Cartesian2(0,0), new Cartesian2(2, -5), new Cartesian2(4,0), new Cartesian2(6, -5), new Cartesian2(8, 0),
                           new Cartesian2(6,0), new Cartesian2(2,0) ];
-        var indices = PolygonPipeline.triangulate(positions);
 
+        var indices = PolygonPipeline.triangulate(positions);
         expect(indices).toEqual([ 0, 1, 2, 2, 3, 4 ]);
     });
 
@@ -286,9 +276,9 @@ defineSuite([
     it('triangulations a polygon with a "tucked" vertex', function() {
         var positions = [new Cartesian2(0,0), new Cartesian2(5,0), new Cartesian2(5,2), new Cartesian2(1, 2),
                          new Cartesian2(3, 2), new Cartesian2(3,4), new Cartesian2(0,4)];
-        var indices = PolygonPipeline.triangulate(positions);
 
-        expect(indices).toEqual([ 0, 4, 6, 0, 2, 4, 4, 5, 6, 0, 1, 2 ]);
+        var indices = PolygonPipeline.triangulate(positions);
+        expect(indices).toEqual([ 0, 1, 6, 1, 4, 6, 1, 2, 4, 4, 5, 6 ]);
     });
 
     it('throws without positions', function() {
@@ -305,33 +295,39 @@ defineSuite([
 
     ///////////////////////////////////////////////////////////////////////
 
-    it('computeSubdivision throws without positions', function() {
+    it('computeSubdivision throws without ellipsoid', function() {
         expect(function() {
             PolygonPipeline.computeSubdivision();
         }).toThrowDeveloperError();
     });
 
+    it('computeSubdivision throws without positions', function() {
+        expect(function() {
+            PolygonPipeline.computeSubdivision(Ellipsoid.WGS84);
+        }).toThrowDeveloperError();
+    });
+
     it('computeSubdivision throws without indices', function() {
         expect(function() {
-            PolygonPipeline.computeSubdivision([]);
+            PolygonPipeline.computeSubdivision(Ellipsoid.WGS84, []);
         }).toThrowDeveloperError();
     });
 
     it('computeSubdivision throws with less than 3 indices', function() {
         expect(function() {
-            PolygonPipeline.computeSubdivision([], [1, 2]);
+            PolygonPipeline.computeSubdivision(Ellipsoid.WGS84, [], [1, 2]);
         }).toThrowDeveloperError();
     });
 
     it('computeSubdivision throws without a multiple of 3 indices', function() {
         expect(function() {
-            PolygonPipeline.computeSubdivision([], [1, 2, 3, 4]);
+            PolygonPipeline.computeSubdivision(Ellipsoid.WGS84, [], [1, 2, 3, 4]);
         }).toThrowDeveloperError();
     });
 
     it('computeSubdivision throws with negative granularity', function() {
         expect(function() {
-            PolygonPipeline.computeSubdivision([], [1, 2, 3], -1.0);
+            PolygonPipeline.computeSubdivision(Ellipsoid.WGS84, [], [1, 2, 3], -1.0);
         }).toThrowDeveloperError();
     });
 
@@ -342,7 +338,7 @@ defineSuite([
                          new Cartesian3(90.0, 0.0, 0.0)
                         ];
         var indices = [0, 1, 2];
-        var subdivision = PolygonPipeline.computeSubdivision(positions, indices, 60.0);
+        var subdivision = PolygonPipeline.computeSubdivision(Ellipsoid.WGS84, positions, indices, 60.0);
 
         expect(subdivision.attributes.position.values[0]).toEqual(0.0);
         expect(subdivision.attributes.position.values[1]).toEqual(0.0);
@@ -378,23 +374,24 @@ defineSuite([
     });
 
     it('eliminateHoles works with non-WGS84 ellipsoids', function() {
-        var outerRing = Ellipsoid.UNIT_SPHERE.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-122.0, 37.0, 0.0),
-            new Cartographic.fromDegrees(-121.9, 37.0, 0.0),
-            new Cartographic.fromDegrees(-121.9, 37.1, 0.0),
-            new Cartographic.fromDegrees(-122.0, 37.1, 0.0),
-            new Cartographic.fromDegrees(-122.0, 37.0, 0.0)
-        ]);
+        var ellipsoid = Ellipsoid.UNIT_SPHERE;
+        var outerRing = Cartesian3.fromDegreesArray([
+            -122.0, 37.0,
+            -121.9, 37.0,
+            -121.9, 37.1,
+            -122.0, 37.1,
+            -122.0, 37.0
+        ], ellipsoid);
 
-        var innerRing = Ellipsoid.UNIT_SPHERE.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.96, 37.04, 0.0),
-            new Cartographic.fromDegrees(-121.96, 37.01, 0.0),
-            new Cartographic.fromDegrees(-121.99, 37.01, 0.0),
-            new Cartographic.fromDegrees(-121.99, 37.04, 0.0)
-        ]);
+        var innerRing = Cartesian3.fromDegreesArray([
+            -121.96, 37.04,
+            -121.96, 37.01,
+            -121.99, 37.01,
+            -121.99, 37.04
+        ], ellipsoid);
 
         var innerRings = [innerRing];
-        var positions = PolygonPipeline.eliminateHoles(outerRing, innerRings, Ellipsoid.UNIT_SPHERE);
+        var positions = PolygonPipeline.eliminateHoles(outerRing, innerRings, ellipsoid);
 
         expect(positions[0]).toEqual(outerRing[0]);
         expect(positions[1]).toEqual(outerRing[1]);
@@ -412,19 +409,19 @@ defineSuite([
     });
 
     it('eliminateHoles removes a hole from a polygon', function() {
-        var outerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-122.0, 37.0, 0.0),
-            new Cartographic.fromDegrees(-121.9, 37.0, 0.0),
-            new Cartographic.fromDegrees(-121.9, 37.1, 0.0),
-            new Cartographic.fromDegrees(-122.0, 37.1, 0.0),
-            new Cartographic.fromDegrees(-122.0, 37.0, 0.0)
+        var outerRing = Cartesian3.fromDegreesArray([
+            -122.0, 37.0,
+            -121.9, 37.0,
+            -121.9, 37.1,
+            -122.0, 37.1,
+            -122.0, 37.0
         ]);
 
-        var innerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.96, 37.04, 0.0),
-            new Cartographic.fromDegrees(-121.96, 37.01, 0.0),
-            new Cartographic.fromDegrees(-121.99, 37.01, 0.0),
-            new Cartographic.fromDegrees(-121.99, 37.04, 0.0)
+        var innerRing = Cartesian3.fromDegreesArray([
+            -121.96, 37.04,
+            -121.96, 37.01,
+            -121.99, 37.01,
+            -121.99, 37.04
         ]);
 
         var innerRings = [innerRing];
@@ -446,19 +443,19 @@ defineSuite([
     });
 
     it('eliminateHoles ensures proper winding order', function() {
-        var outerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-122.0, 37.0, 0.0),
-            new Cartographic.fromDegrees(-121.9, 37.0, 0.0),
-            new Cartographic.fromDegrees(-121.9, 37.1, 0.0),
-            new Cartographic.fromDegrees(-122.0, 37.1, 0.0),
-            new Cartographic.fromDegrees(-122.0, 37.0, 0.0)
+        var outerRing = Cartesian3.fromDegreesArray([
+            -122.0, 37.0,
+            -121.9, 37.0,
+            -121.9, 37.1,
+            -122.0, 37.1,
+            -122.0, 37.0
         ]);
 
-        var innerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.96, 37.04, 0.0),
-            new Cartographic.fromDegrees(-121.99, 37.04, 0.0),
-            new Cartographic.fromDegrees(-121.99, 37.01, 0.0),
-            new Cartographic.fromDegrees(-121.96, 37.01, 0.0)
+        var innerRing = Cartesian3.fromDegreesArray([
+            -121.96, 37.04,
+            -121.99, 37.04,
+            -121.99, 37.01,
+            -121.96, 37.01
         ]);
 
         var innerRings = [innerRing];
@@ -480,21 +477,21 @@ defineSuite([
     });
 
     it('eliminateHoles works with concave polygons', function() {
-        var outerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-122.0, 37.0),
-            new Cartographic.fromDegrees(-121.96, 37.0),
-            new Cartographic.fromDegrees(-121.92, 37.03),
-            new Cartographic.fromDegrees(-121.92, 37.0),
-            new Cartographic.fromDegrees(-121.9, 37.0),
-            new Cartographic.fromDegrees(-121.9, 37.1),
-            new Cartographic.fromDegrees(-122.0, 37.1)
+        var outerRing = Cartesian3.fromDegreesArray([
+            -122.0, 37.0,
+            -121.96, 37.0,
+            -121.92, 37.03,
+            -121.92, 37.0,
+            -121.9, 37.0,
+            -121.9, 37.1,
+            -122.0, 37.1
         ]);
 
-        var innerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.99, 37.01),
-            new Cartographic.fromDegrees(-121.99, 37.04),
-            new Cartographic.fromDegrees(-121.96, 37.04),
-            new Cartographic.fromDegrees(-121.96, 37.01)
+        var innerRing = Cartesian3.fromDegreesArray([
+            -121.99, 37.01,
+            -121.99, 37.04,
+            -121.96, 37.04,
+            -121.96, 37.01
         ]);
 
         var positions = PolygonPipeline.eliminateHoles(outerRing, [innerRing]);
@@ -517,36 +514,36 @@ defineSuite([
     });
 
     it('eliminateHoles eliminates multiple holes', function() {
-        var outerRing = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-122.0, 37.0),
-            new Cartographic.fromDegrees(-121.9, 37.0),
-            new Cartographic.fromDegrees(-121.9, 37.1),
-            new Cartographic.fromDegrees(-122.0, 37.1)
+        var outerRing = Cartesian3.fromDegreesArray([
+            -122.0, 37.0,
+            -121.9, 37.0,
+            -121.9, 37.1,
+            -122.0, 37.1
         ]);
 
-        var inner0 = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.99, 37.01),
-            new Cartographic.fromDegrees(-121.99, 37.04),
-            new Cartographic.fromDegrees(-121.96, 37.04),
-            new Cartographic.fromDegrees(-121.96, 37.01)
+        var inner0 = Cartesian3.fromDegreesArray([
+            -121.99, 37.01,
+            -121.99, 37.04,
+            -121.96, 37.04,
+            -121.96, 37.01
         ]);
-        var inner1 = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.94, 37.06),
-            new Cartographic.fromDegrees(-121.94, 37.09),
-            new Cartographic.fromDegrees(-121.91, 37.09),
-            new Cartographic.fromDegrees(-121.91, 37.06)
+        var inner1 = Cartesian3.fromDegreesArray([
+            -121.94, 37.06,
+            -121.94, 37.09,
+            -121.91, 37.09,
+            -121.91, 37.06
         ]);
-        var inner2 = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.99, 37.06),
-            new Cartographic.fromDegrees(-121.99, 37.09),
-            new Cartographic.fromDegrees(-121.96, 37.09),
-            new Cartographic.fromDegrees(-121.96, 37.06)
+        var inner2 = Cartesian3.fromDegreesArray([
+            -121.99, 37.06,
+            -121.99, 37.09,
+            -121.96, 37.09,
+            -121.96, 37.06
         ]);
-        var inner3 = Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-            new Cartographic.fromDegrees(-121.94, 37.01),
-            new Cartographic.fromDegrees(-121.94, 37.04),
-            new Cartographic.fromDegrees(-121.91, 37.04),
-            new Cartographic.fromDegrees(-121.91, 37.01)
+        var inner3 = Cartesian3.fromDegreesArray([
+            -121.94, 37.01,
+            -121.94, 37.04,
+            -121.91, 37.04,
+            -121.91, 37.01
         ]);
 
         var innerRings = [inner0, inner1, inner2, inner3];
@@ -556,16 +553,4 @@ defineSuite([
         expect(positions.length).toEqual(28);
     });
 
-    it('elimitate holes does not add undefined to returned positions', function() {
-        var ellipsoid = Ellipsoid.WGS84;
-        var center = new Cartographic(0.2930215893394521, 0.818292397338644, 1880.6159971414636);
-        var radius = 10000;
-        var outer = Shapes.computeCircleBoundary(ellipsoid, ellipsoid.cartographicToCartesian(center), radius);
-        var inner = Shapes.computeCircleBoundary(ellipsoid, ellipsoid.cartographicToCartesian(center), radius * 0.8);
-
-        var positions = PolygonPipeline.eliminateHoles(outer, [inner], ellipsoid);
-        expect(function() {
-            PolygonPipeline.removeDuplicates(positions);
-        }).not.toThrow();
-    });
 });

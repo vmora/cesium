@@ -1,12 +1,14 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/CircleOutlineGeometry',
-         'Core/Cartographic',
-         'Core/Ellipsoid'
-     ], function(
-         CircleOutlineGeometry,
-         Cartographic,
-         Ellipsoid) {
+        'Core/CircleOutlineGeometry',
+        'Core/Cartesian3',
+        'Core/Ellipsoid',
+        'Specs/createPackableSpecs'
+    ], function(
+        CircleOutlineGeometry,
+        Cartesian3,
+        Ellipsoid,
+        createPackableSpecs) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -21,7 +23,7 @@ defineSuite([
     it('throws without a radius', function() {
         expect(function() {
             return new CircleOutlineGeometry({
-                center : Ellipsoid.WGS84.cartographicToCartesian(new Cartographic())
+                center : Cartesian3.fromDegrees(0,0)
             });
         }).toThrowDeveloperError();
     });
@@ -29,7 +31,7 @@ defineSuite([
     it('throws with a negative radius', function() {
         expect(function() {
             return new CircleOutlineGeometry({
-                center : Ellipsoid.WGS84.cartographicToCartesian(new Cartographic()),
+                center : Cartesian3.fromDegrees(0,0),
                 radius : -1.0
             });
         }).toThrowDeveloperError();
@@ -38,7 +40,7 @@ defineSuite([
     it('throws with a negative granularity', function() {
         expect(function() {
             return new CircleOutlineGeometry({
-                center : Ellipsoid.WGS84.cartographicToCartesian(new Cartographic()),
+                center : Cartesian3.fromDegrees(0,0),
                 radius : 1.0,
                 granularity : -1.0
             });
@@ -46,46 +48,54 @@ defineSuite([
     });
 
     it('computes positions', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CircleOutlineGeometry.createGeometry(new CircleOutlineGeometry({
-            ellipsoid : ellipsoid,
-            center : ellipsoid.cartographicToCartesian(new Cartographic()),
-            granularity : 0.75,
+            ellipsoid : Ellipsoid.WGS84,
+            center : Cartesian3.fromDegrees(0,0),
+            granularity : 0.1,
             radius : 1.0
         }));
 
-        expect(m.attributes.position.values.length).toEqual(3 * 10);
-        expect(m.indices.length).toEqual(2 * 10);
+        expect(m.attributes.position.values.length).toEqual(3 * 6);
+        expect(m.indices.length).toEqual(2 * 6);
         expect(m.boundingSphere.radius).toEqual(1);
     });
 
     it('computes positions extruded', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CircleOutlineGeometry.createGeometry(new CircleOutlineGeometry({
-            ellipsoid : ellipsoid,
-            center : ellipsoid.cartographicToCartesian(new Cartographic()),
-            granularity : 0.75,
+            ellipsoid : Ellipsoid.WGS84,
+            center : Cartesian3.fromDegrees(0,0),
+            granularity : 0.1,
             radius : 1.0,
             extrudedHeight : 10000
         }));
 
-        expect(m.attributes.position.values.length).toEqual(2 * 10 * 3);
-        expect(m.indices.length).toEqual(2 * 10 * 2 + (16*2));
+        expect(m.attributes.position.values.length).toEqual(2 * 6 * 3);
+        expect(m.indices.length).toEqual(2 * 6 * 2 + 16 * 2);
     });
 
-
     it('computes positions extruded, no lines between top and bottom', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CircleOutlineGeometry.createGeometry(new CircleOutlineGeometry({
-            ellipsoid : ellipsoid,
-            center : ellipsoid.cartographicToCartesian(new Cartographic()),
-            granularity : 0.75,
+            ellipsoid : Ellipsoid.WGS84,
+            center : Cartesian3.fromDegrees(0,0),
+            granularity : 0.1,
             radius : 1.0,
             extrudedHeight : 10000,
             numberOfVerticalLines : 0
         }));
 
-        expect(m.attributes.position.values.length).toEqual(2 * 10 * 3);
-        expect(m.indices.length).toEqual(2 * 10 * 2);
+        expect(m.attributes.position.values.length).toEqual(2 * 6 * 3);
+        expect(m.indices.length).toEqual(2 * 6 * 2);
     });
+
+    var center = Cartesian3.fromDegrees(0,0);
+    var ellipsoid = Ellipsoid.WGS84;
+    var packableInstance = new CircleOutlineGeometry({
+        ellipsoid : ellipsoid,
+        center : center,
+        granularity : 0.1,
+        radius : 1.0,
+        numberOfVerticalLines : 0
+    });
+    var packedInstance = [center.x, center.y, center.z, ellipsoid.radii.x, ellipsoid.radii.y, ellipsoid.radii.z, 1.0, 1.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0];
+    createPackableSpecs(CircleOutlineGeometry, packableInstance, packedInstance);
 });

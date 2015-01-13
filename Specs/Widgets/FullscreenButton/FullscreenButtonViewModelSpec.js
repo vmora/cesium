@@ -1,10 +1,10 @@
 /*global defineSuite*/
 defineSuite([
-         'Widgets/FullscreenButton/FullscreenButtonViewModel',
-         'Core/Fullscreen'
-     ], function(
-         FullscreenButtonViewModel,
-         Fullscreen) {
+        'Widgets/FullscreenButton/FullscreenButtonViewModel',
+        'Core/Fullscreen'
+    ], function(
+        FullscreenButtonViewModel,
+        Fullscreen) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -23,9 +23,19 @@ defineSuite([
         viewModel.destroy();
     });
 
+    it('constructor can take an element id', function() {
+        var testElement = document.createElement('span');
+        testElement.id = 'testElement';
+        document.body.appendChild(testElement);
+        var viewModel = new FullscreenButtonViewModel('testElement');
+        expect(viewModel.fullscreenElement).toBe(testElement);
+        viewModel.destroy();
+        document.body.removeChild(testElement);
+    });
+
     it('isFullscreenEnabled work as expected', function() {
         var viewModel = new FullscreenButtonViewModel();
-        expect(viewModel.isFullscreenEnabled).toEqual(Fullscreen.isFullscreenEnabled());
+        expect(viewModel.isFullscreenEnabled).toEqual(Fullscreen.enabled);
         viewModel.isFullscreenEnabled = false;
         expect(viewModel.isFullscreenEnabled).toEqual(false);
         viewModel.destroy();

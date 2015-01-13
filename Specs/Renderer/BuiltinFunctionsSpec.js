@@ -1,26 +1,28 @@
 /*global defineSuite*/
 defineSuite([
-         'Specs/createContext',
-         'Specs/destroyContext',
-         'Specs/createCamera',
-         'Specs/createFrameState',
-         'Core/BoundingRectangle',
-         'Core/PrimitiveType',
-         'Core/Cartesian3',
-         'Core/EncodedCartesian3',
-         'Renderer/BufferUsage',
-         'Renderer/ClearCommand'
-     ], 'Renderer/BuiltinFunctions', function(
-         createContext,
-         destroyContext,
-         createCamera,
-         createFrameState,
-         BoundingRectangle,
-         PrimitiveType,
-         Cartesian3,
-         EncodedCartesian3,
-         BufferUsage,
-         ClearCommand) {
+        'Core/BoundingRectangle',
+        'Core/Cartesian3',
+        'Core/EncodedCartesian3',
+        'Core/PrimitiveType',
+        'Renderer/BufferUsage',
+        'Renderer/ClearCommand',
+        'Renderer/DrawCommand',
+        'Specs/createCamera',
+        'Specs/createContext',
+        'Specs/createFrameState',
+        'Specs/destroyContext'
+    ], 'Renderer/BuiltinFunctions', function(
+        BoundingRectangle,
+        Cartesian3,
+        EncodedCartesian3,
+        PrimitiveType,
+        BufferUsage,
+        ClearCommand,
+        DrawCommand,
+        createCamera,
+        createContext,
+        createFrameState,
+        destroyContext) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -39,7 +41,7 @@ defineSuite([
         var sp = context.createShaderProgram(vs, fs);
 
         var va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -47,12 +49,13 @@ defineSuite([
         ClearCommand.ALL.execute(context);
         expect(context.readPixels()).toEqual([0, 0, 0, 0]);
 
-        context.draw({
+        var command = new DrawCommand({
             primitiveType : PrimitiveType.POINTS,
             shaderProgram : sp,
             vertexArray : va,
             uniformMap : uniformMap
         });
+        command.execute(context);
         expect(context.readPixels()).toEqual([255, 255, 255, 255]);
 
         sp = sp.destroy();
@@ -93,15 +96,15 @@ defineSuite([
     });
 
     it('has czm_eyeToWindowCoordinates', function() {
-        var camera = createCamera(context);
+        var camera = createCamera();
         camera.frustum.near = 1.0;
 
-        var canvas = context.getCanvas();
+        var canvas = context.canvas;
         var width = canvas.clientWidth;
         var height = canvas.clientHeight;
         var vp = new BoundingRectangle(0.0, 0.0, width, height);
-        context.getUniformState().setViewport(vp);
-        context.getUniformState().update(context, createFrameState(camera));
+        context.uniformState.viewport = vp;
+        context.uniformState.update(context, createFrameState(camera));
 
         var fs =
             'void main() { ' +
@@ -119,15 +122,15 @@ defineSuite([
     });
 
     it('has czm_windowToEyeCoordinates', function() {
-        var camera = createCamera(context);
+        var camera = createCamera();
         camera.frustum.near = 1.0;
 
-        var canvas = context.getCanvas();
+        var canvas = context.canvas;
         var width = canvas.clientWidth;
         var height = canvas.clientHeight;
         var vp = new BoundingRectangle(0.0, 0.0, width, height);
-        context.getUniformState().setViewport(vp);
-        context.getUniformState().update(context, createFrameState(camera));
+        context.uniformState.viewport = vp;
+        context.uniformState.update(context, createFrameState(camera));
 
         var fs =
             'void main() { ' +
@@ -158,8 +161,10 @@ defineSuite([
     });
 
     it('has czm_translateRelativeToEye', function() {
-        var camera = createCamera(context, new Cartesian3(1.0, 2.0, 3.0));
-        context.getUniformState().update(context, createFrameState(camera));
+        var camera = createCamera({
+            eye : new Cartesian3(1.0, 2.0, 3.0)
+        });
+        context.uniformState.update(context, createFrameState(camera));
 
         var p = new Cartesian3(6.0, 5.0, 4.0);
         var encoded = EncodedCartesian3.fromCartesian(p);
@@ -215,6 +220,100 @@ defineSuite([
         var fs =
             'void main() { ' +
             '  gl_FragColor = vec4(czm_pointAlongRay(czm_ray(vec3(0.0), vec3(0.0, 1.0, 0.0)), -2.0) == vec3(0.0, -2.0, 0.0)); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has czm_octDecode(vec2)', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(all(lessThanEqual(abs(czm_octDecode(vec2(128.0, 128.0)) - vec3(0.0, 0.0, 1.0)), vec3(0.01)))); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has czm_octDecode(float)', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(all(lessThanEqual(abs(czm_octDecode(32896.0) - vec3(0.0, 0.0, 1.0)), vec3(0.01)))); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has czm_octDecode(vec2, vec3, vec3, vec3)', function() {
+        var fs =
+            'void main() { ' +
+            '  vec3 a, b, c;' +
+            '  czm_octDecode(vec2(8454016.0, 8421631.0), a, b, c);' +
+            '  bool decoded = all(lessThanEqual(abs(a - vec3(1.0, 0.0, 0.0)), vec3(0.01)));' +
+            '  decoded = decoded && all(lessThanEqual(abs(b - vec3(0.0, 1.0, 0.0)), vec3(0.01)));' +
+            '  decoded = decoded && all(lessThanEqual(abs(c - vec3(0.0, 0.0, 1.0)), vec3(0.01)));' +
+            '  gl_FragColor = vec4(decoded);' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has czm_decompressTextureCoordinates', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(czm_decompressTextureCoordinates(8390656.0) == vec2(0.5, 0.5)); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has signNotZero : float', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(czm_signNotZero(0.0) == 1.0, ' +
+            '                      czm_signNotZero(5.0) == 1.0, ' +
+            '                      czm_signNotZero(-5.0) == -1.0, 1.0); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has signNotZero : vec2', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(czm_signNotZero(vec2(0.0, 0.0)) == vec2(1.0, 1.0), ' +
+            '                      czm_signNotZero(vec2(1.0, 1.0)) == vec2(1.0, 1.0), ' +
+            '                      czm_signNotZero(vec2(-1.0, -1.0)) == vec2(-1.0, -1.0), ' +
+            '                      czm_signNotZero(vec2(-1.0, 0.0)) == vec2(-1.0, 1.0)); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has signNotZero : vec3', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(czm_signNotZero(vec3(0.0, 0.0, 0.0)) == vec3(1.0, 1.0, 1.0), ' +
+            '                      czm_signNotZero(vec3(1.0, 1.0, 1.0)) == vec3(1.0, 1.0, 1.0), ' +
+            '                      czm_signNotZero(vec3(-1.0, -1.0, -1.0)) == vec3(-1.0, -1.0, -1.0), ' +
+            '                      czm_signNotZero(vec3(-1.0, 0.0, 1.0)) == vec3(-1.0, 1.0, 1.0)); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has signNotZero : vec4', function() {
+        var fs =
+            'void main() { ' +
+            '  gl_FragColor = vec4(czm_signNotZero(vec4(0.0, 0.0, 0.0, 0.0)) == vec4(1.0), ' +
+            '                      czm_signNotZero(vec4(1.0, 1.0, 1.0, 1.0)) == vec4(1.0), ' +
+            '                      czm_signNotZero(vec4(-1.0, -1.0, -1.0, -1.0)) == vec4(-1.0), ' +
+            '                      czm_signNotZero(vec4(-1.0, 0.0, 1.0, -10.0)) == vec4(-1.0, 1.0, 1.0, -1.0)); ' +
+            '}';
+        verifyDraw(fs);
+    });
+
+    it('has czm_cosineAndSine in all 4 quadrants', function() {
+        var fs =
+            'bool isBounded(float value, float min, float max) { ' +
+            '  return ((value < max) && (value > min)); ' +
+            '}' +
+            'void main() { ' +
+            '  gl_FragColor = vec4(isBounded(czm_cosineAndSine(czm_piOverFour).x, 0.707106, 0.707107) && isBounded(czm_cosineAndSine(czm_piOverFour).y, 0.707106, 0.707107), ' +
+            '                      isBounded(czm_cosineAndSine(czm_pi - czm_piOverFour).x, -0.707107, -0.707106) && isBounded(czm_cosineAndSine(czm_pi - czm_piOverFour).y, 0.707106, 0.707107), ' +
+            '                      isBounded(czm_cosineAndSine(-czm_piOverFour).x, 0.707106, 0.707107) && isBounded(czm_cosineAndSine(-czm_piOverFour).y, -0.707107, -0.707106), ' +
+            '                      isBounded(czm_cosineAndSine(-czm_pi + czm_piOverFour).x, -0.707107, -0.707106) && isBounded(czm_cosineAndSine(-czm_pi + czm_piOverFour).y, -0.707107, -0.707106)); ' +
             '}';
         verifyDraw(fs);
     });

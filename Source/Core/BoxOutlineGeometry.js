@@ -1,26 +1,26 @@
 /*global define*/
 define([
-        './defined',
-        './DeveloperError',
+        './BoundingSphere',
         './Cartesian3',
         './ComponentDatatype',
-        './PrimitiveType',
         './defaultValue',
-        './BoundingSphere',
+        './defined',
+        './DeveloperError',
         './Geometry',
         './GeometryAttribute',
-        './GeometryAttributes'
+        './GeometryAttributes',
+        './PrimitiveType'
     ], function(
-        defined,
-        DeveloperError,
+        BoundingSphere,
         Cartesian3,
         ComponentDatatype,
-        PrimitiveType,
         defaultValue,
-        BoundingSphere,
+        defined,
+        DeveloperError,
         Geometry,
         GeometryAttribute,
-        GeometryAttributes) {
+        GeometryAttributes,
+        PrimitiveType) {
     "use strict";
 
     var diffScratch = new Cartesian3();
@@ -34,11 +34,11 @@ define([
      * @param {Cartesian3} options.minimumCorner The minimum x, y, and z coordinates of the box.
      * @param {Cartesian3} options.maximumCorner The maximum x, y, and z coordinates of the box.
      *
-     * @exception {DeveloperError} options.minimumCorner is required.
-     * @exception {DeveloperError} options.maximumCorner is required.
+     * @see BoxOutlineGeometry.fromDimensions
+     * @see BoxOutlineGeometry.createGeometry
+     * @see Packable
      *
-     * @see BoxOutlineGeometry#fromDimensions
-     * @see BoxOutlineGeometry#createGeometry
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Box%20Outline.html|Cesium Sandcastle Box Outline Demo}
      *
      * @example
      * var box = new Cesium.BoxOutlineGeometry({
@@ -69,14 +69,12 @@ define([
 
     /**
      * Creates an outline of a cube centered at the origin given its dimensions.
-     * @memberof BoxOutlineGeometry
      *
      * @param {Cartesian3} options.dimensions The width, depth, and height of the box stored in the x, y, and z coordinates of the <code>Cartesian3</code>, respectively.
      *
-     * @exception {DeveloperError} options.dimensions is required.
      * @exception {DeveloperError} All dimensions components must be greater than or equal to zero.
      *
-     * @see BoxOutlineGeometry#createGeometry
+     * @see BoxOutlineGeometry.createGeometry
      *
      * @example
      * var box = Cesium.BoxOutlineGeometry.fromDimensions({
@@ -97,8 +95,8 @@ define([
         }
         //>>includeEnd('debug');
 
-        var corner = Cartesian3.multiplyByScalar(dimensions, 0.5);
-        var min = Cartesian3.negate(corner);
+        var corner = Cartesian3.multiplyByScalar(dimensions, 0.5, new Cartesian3());
+        var min = Cartesian3.negate(corner, new Cartesian3());
         var max = corner;
 
         var newOptions = {
@@ -109,8 +107,73 @@ define([
     };
 
     /**
+     * The number of elements used to pack the object into an array.
+     * @type {Number}
+     */
+    BoxOutlineGeometry.packedLength = 2 * Cartesian3.packedLength;
+
+    /**
+     * Stores the provided instance into the provided array.
+     * @function
+     *
+     * @param {Object} value The value to pack.
+     * @param {Number[]} array The array to pack into.
+     * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+     */
+    BoxOutlineGeometry.pack = function(value, array, startingIndex) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(value)) {
+            throw new DeveloperError('value is required');
+        }
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        Cartesian3.pack(value._min, array, startingIndex);
+        Cartesian3.pack(value._max, array, startingIndex + Cartesian3.packedLength);
+    };
+
+    var scratchMin = new Cartesian3();
+    var scratchMax = new Cartesian3();
+    var scratchOptions = {
+        minimumCorner : scratchMin,
+        maximumCorner : scratchMax
+    };
+
+    /**
+     * Retrieves an instance from a packed array.
+     *
+     * @param {Number[]} array The packed array.
+     * @param {Number} [startingIndex=0] The starting index of the element to be unpacked.
+     * @param {BoxOutlineGeometry} [result] The object into which to store the result.
+     */
+    BoxOutlineGeometry.unpack = function(array, startingIndex, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        var min = Cartesian3.unpack(array, startingIndex, scratchMin);
+        var max = Cartesian3.unpack(array, startingIndex + Cartesian3.packedLength, scratchMax);
+
+        if (!defined(result)) {
+            return new BoxOutlineGeometry(scratchOptions);
+        }
+
+        result._min = Cartesian3.clone(min, result._min);
+        result._max = Cartesian3.clone(max, result._max);
+
+        return result;
+    };
+
+    /**
      * Computes the geometric representation of an outline of a box, including its vertices, indices, and a bounding sphere.
-     * @memberof BoxOutlineGeometry
      *
      * @param {BoxOutlineGeometry} boxGeometry A description of the box outline.
      * @returns {Geometry} The computed vertices and indices.

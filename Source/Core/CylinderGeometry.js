@@ -1,35 +1,35 @@
 /*global define*/
 define([
+        './BoundingSphere',
+        './Cartesian2',
+        './Cartesian3',
+        './ComponentDatatype',
+        './CylinderGeometryLibrary',
         './defaultValue',
         './defined',
         './DeveloperError',
-        './Cartesian2',
-        './Cartesian3',
-        './CylinderGeometryLibrary',
-        './Math',
-        './ComponentDatatype',
-        './IndexDatatype',
-        './PrimitiveType',
-        './BoundingSphere',
         './Geometry',
         './GeometryAttribute',
         './GeometryAttributes',
+        './IndexDatatype',
+        './Math',
+        './PrimitiveType',
         './VertexFormat'
     ], function(
+        BoundingSphere,
+        Cartesian2,
+        Cartesian3,
+        ComponentDatatype,
+        CylinderGeometryLibrary,
         defaultValue,
         defined,
         DeveloperError,
-        Cartesian2,
-        Cartesian3,
-        CylinderGeometryLibrary,
-        CesiumMath,
-        ComponentDatatype,
-        IndexDatatype,
-        PrimitiveType,
-        BoundingSphere,
         Geometry,
         GeometryAttribute,
         GeometryAttributes,
+        IndexDatatype,
+        CesiumMath,
+        PrimitiveType,
         VertexFormat) {
     "use strict";
 
@@ -46,10 +46,11 @@ define([
      * @alias CylinderGeometry
      * @constructor
      *
+     * @param {Object} options Object with the following properties:
      * @param {Number} options.length The length of the cylinder.
      * @param {Number} options.topRadius The radius of the top of the cylinder.
      * @param {Number} options.bottomRadius The radius of the bottom of the cylinder.
-     * @param {Number} [options.slices = 128] The number of edges around perimeter of the cylinder.
+     * @param {Number} [options.slices=128] The number of edges around perimeter of the cylinder.
      * @param {VertexFormat} [options.vertexFormat=VertexFormat.DEFAULT] The vertex attributes to be computed.
      *
      * @exception {DeveloperError} options.length must be greater than 0.
@@ -58,7 +59,9 @@ define([
      * @exception {DeveloperError} bottomRadius and topRadius cannot both equal 0.
      * @exception {DeveloperError} options.slices must be greater that 3.
      *
-     * @see CylinderGeometry#createGeometry
+     * @see CylinderGeometry.createGeometry
+     *
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Cylinder.html|Cesium Sandcastle Cylinder Demo}
      *
      * @example
      * // create cylinder geometry
@@ -99,14 +102,98 @@ define([
         this._length = length;
         this._topRadius = topRadius;
         this._bottomRadius = bottomRadius;
-        this._vertexFormat = vertexFormat;
+        this._vertexFormat = VertexFormat.clone(vertexFormat);
         this._slices = slices;
         this._workerName = 'createCylinderGeometry';
     };
 
     /**
+     * The number of elements used to pack the object into an array.
+     * @type {Number}
+     */
+    CylinderGeometry.packedLength = VertexFormat.packedLength + 4;
+
+    /**
+     * Stores the provided instance into the provided array.
+     * @function
+     *
+     * @param {Object} value The value to pack.
+     * @param {Number[]} array The array to pack into.
+     * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+     */
+    CylinderGeometry.pack = function(value, array, startingIndex) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(value)) {
+            throw new DeveloperError('value is required');
+        }
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        VertexFormat.pack(value._vertexFormat, array, startingIndex);
+        startingIndex += VertexFormat.packedLength;
+
+        array[startingIndex++] = value._length;
+        array[startingIndex++] = value._topRadius;
+        array[startingIndex++] = value._bottomRadius;
+        array[startingIndex]   = value._slices;
+    };
+
+    var scratchVertexFormat = new VertexFormat();
+    var scratchOptions = {
+        vertexFormat : scratchVertexFormat,
+        length : undefined,
+        topRadius : undefined,
+        bottomRadius : undefined,
+        slices : undefined
+    };
+
+    /**
+     * Retrieves an instance from a packed array.
+     *
+     * @param {Number[]} array The packed array.
+     * @param {Number} [startingIndex=0] The starting index of the element to be unpacked.
+     * @param {CylinderGeometry} [result] The object into which to store the result.
+     */
+    CylinderGeometry.unpack = function(array, startingIndex, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(array)) {
+            throw new DeveloperError('array is required');
+        }
+        //>>includeEnd('debug');
+
+        startingIndex = defaultValue(startingIndex, 0);
+
+        var vertexFormat = VertexFormat.unpack(array, startingIndex, scratchVertexFormat);
+        startingIndex += VertexFormat.packedLength;
+
+        var length = array[startingIndex++];
+        var topRadius = array[startingIndex++];
+        var bottomRadius = array[startingIndex++];
+        var slices = array[startingIndex];
+
+        if (!defined(result)) {
+            scratchOptions.length = length;
+            scratchOptions.topRadius = topRadius;
+            scratchOptions.bottomRadius = bottomRadius;
+            scratchOptions.slices = slices;
+            return new CylinderGeometry(scratchOptions);
+        }
+
+        result._vertexFormat = VertexFormat.clone(vertexFormat, result._vertexFormat);
+        result._length = length;
+        result._topRadius = topRadius;
+        result._bottomRadius = bottomRadius;
+        result._slices = slices;
+
+        return result;
+    };
+
+    /**
      * Computes the geometric representation of a cylinder, including its vertices, indices, and a bounding sphere.
-     * @memberof CylinderGeometry
      *
      * @param {CylinderGeometry} cylinderGeometry A description of the cylinder.
      * @returns {Geometry} The computed vertices and indices.

@@ -1,15 +1,17 @@
 /*global define*/
 define([
+        './defaultValue',
         './defined',
         './Fullscreen'
     ], function(
+        defaultValue,
         defined,
         Fullscreen) {
     "use strict";
 
     function extractVersion(versionString) {
         var parts = versionString.split('.');
-        for ( var i = 0, len = parts.length; i < len; ++i) {
+        for (var i = 0, len = parts.length; i < len; ++i) {
             parts[i] = parseInt(parts[i], 10);
         }
         return parts;
@@ -19,10 +21,10 @@ define([
     var chromeVersionResult;
     function isChrome() {
         if (!defined(isChromeResult)) {
+            isChromeResult = false;
+
             var fields = (/ Chrome\/([\.0-9]+)/).exec(navigator.userAgent);
-            if (fields === null) {
-                isChromeResult = false;
-            } else {
+            if (fields !== null) {
                 isChromeResult = true;
                 chromeVersionResult = extractVersion(fields[1]);
             }
@@ -39,14 +41,12 @@ define([
     var safariVersionResult;
     function isSafari() {
         if (!defined(isSafariResult)) {
+            isSafariResult = false;
+
             // Chrome contains Safari in the user agent too
-            if (isChrome() || !(/ Safari\/[\.0-9]+/).test(navigator.userAgent)) {
-                isSafariResult = false;
-            } else {
+            if (!isChrome() && (/ Safari\/[\.0-9]+/).test(navigator.userAgent)) {
                 var fields = (/ Version\/([\.0-9]+)/).exec(navigator.userAgent);
-                if (fields === null) {
-                    isSafariResult = false;
-                } else {
+                if (fields !== null) {
                     isSafariResult = true;
                     safariVersionResult = extractVersion(fields[1]);
                 }
@@ -64,10 +64,10 @@ define([
     var webkitVersionResult;
     function isWebkit() {
         if (!defined(isWebkitResult)) {
+            isWebkitResult = false;
+
             var fields = (/ AppleWebKit\/([\.0-9]+)(\+?)/).exec(navigator.userAgent);
-            if (fields === null) {
-                isWebkitResult = false;
-            } else {
+            if (fields !== null) {
                 isWebkitResult = true;
                 webkitVersionResult = extractVersion(fields[1]);
                 webkitVersionResult.isNightly = !!fields[2];
@@ -85,12 +85,21 @@ define([
     var internetExplorerVersionResult;
     function isInternetExplorer() {
         if (!defined(isInternetExplorerResult)) {
-            var fields = (/ MSIE ([\.0-9]+)/).exec(navigator.userAgent);
-            if (fields === null) {
-                isInternetExplorerResult = false;
-            } else {
-                isInternetExplorerResult = true;
-                internetExplorerVersionResult = extractVersion(fields[1]);
+            isInternetExplorerResult = false;
+
+            var fields;
+            if (navigator.appName === 'Microsoft Internet Explorer') {
+                fields = /MSIE ([0-9]{1,}[\.0-9]{0,})/.exec(navigator.userAgent);
+                if (fields !== null) {
+                    isInternetExplorerResult = true;
+                    internetExplorerVersionResult = extractVersion(fields[1]);
+                }
+            } else if (navigator.appName === 'Netscape') {
+                fields = /Trident\/.*rv:([0-9]{1,}[\.0-9]{0,})/.exec(navigator.userAgent);
+                if (fields !== null) {
+                    isInternetExplorerResult = true;
+                    internetExplorerVersionResult = extractVersion(fields[1]);
+                }
             }
         }
         return isInternetExplorerResult;
@@ -100,11 +109,31 @@ define([
         return isInternetExplorer() && internetExplorerVersionResult;
     }
 
+    var isFirefoxResult;
+    var firefoxVersionResult;
+    function isFirefox() {
+        if (!defined(isFirefoxResult)) {
+            isFirefoxResult = false;
+
+            var fields = /Firefox\/([\.0-9]+)/.exec(navigator.userAgent);
+            if (fields !== null) {
+                isFirefoxResult = true;
+                firefoxVersionResult = extractVersion(fields[1]);
+            }
+        }
+        return isFirefoxResult;
+    }
+
+    function firefoxVersion() {
+        return isFirefox() && firefoxVersionResult;
+    }
+
     /**
      * A set of functions to detect whether the current browser supports
      * various features.
      *
-     * @exports FeatureDetection
+     * @namespace
+     * @alias FeatureDetection
      */
     var FeatureDetection = {
         isChrome : isChrome,
@@ -114,32 +143,10 @@ define([
         isWebkit : isWebkit,
         webkitVersion : webkitVersion,
         isInternetExplorer : isInternetExplorer,
-        internetExplorerVersion : internetExplorerVersion
-    };
-
-    var supportsCrossOriginImagery;
-
-    /**
-     * Detects whether the current browser supports the use of cross-origin
-     * requests to load streaming imagery.
-     *
-     * @returns true if the browser can load cross-origin streaming imagery, false if not.
-     *
-     * @see <a href='http://www.w3.org/TR/cors/'>Cross-Origin Resource Sharing</a>
-     */
-    FeatureDetection.supportsCrossOriginImagery = function() {
-        if (!defined(supportsCrossOriginImagery)) {
-            if (isSafari() && webkitVersion()[0] < 536) {
-                // versions of Safari below this incorrectly throw a DOM error when calling
-                // readPixels on a canvas containing a cross-origin image.
-                supportsCrossOriginImagery = false;
-            } else {
-                // any other versions of browsers that incorrectly block
-                // readPixels on canvas containing crossOrigin images?
-                supportsCrossOriginImagery = 'withCredentials' in new XMLHttpRequest();
-            }
-        }
-        return supportsCrossOriginImagery;
+        internetExplorerVersion : internetExplorerVersion,
+        isFirefox : isFirefox,
+        firefoxVersion : firefoxVersion,
+        hardwareConcurrency : defaultValue(navigator.hardwareConcurrency, 3)
     };
 
     /**
@@ -148,7 +155,7 @@ define([
      * @returns true if the browser supports the full screen standard, false if not.
      *
      * @see Fullscreen
-     * @see <a href='http://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html'>W3C Fullscreen Living Specification</a>
+     * @see {@link http://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html|W3C Fullscreen Living Specification}
      */
     FeatureDetection.supportsFullscreen = function() {
         return Fullscreen.supportsFullscreen();
@@ -159,10 +166,21 @@ define([
      *
      * @returns true if the browser supports typed arrays, false if not.
      *
-     * @see <a href='http://www.khronos.org/registry/typedarray/specs/latest/'>Typed Array Specification</a>
+     * @see {@link http://www.khronos.org/registry/typedarray/specs/latest/|Typed Array Specification}
      */
     FeatureDetection.supportsTypedArrays = function() {
         return typeof ArrayBuffer !== 'undefined';
+    };
+
+    /**
+     * Detects whether the current browser supports Web Workers.
+     *
+     * @returns true if the browsers supports Web Workers, false if not.
+     *
+     * @see {@link http://www.w3.org/TR/workers/}
+     */
+    FeatureDetection.supportsWebWorkers = function() {
+        return typeof Worker !== 'undefined';
     };
 
     return FeatureDetection;

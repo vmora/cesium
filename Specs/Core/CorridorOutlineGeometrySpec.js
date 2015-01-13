@@ -1,37 +1,22 @@
 /*global defineSuite*/
 defineSuite([
-         'Core/CorridorOutlineGeometry',
-         'Core/CornerType',
-         'Core/Cartesian3',
-         'Core/Cartographic',
-         'Core/Ellipsoid',
-         'Core/Math'
-     ], function(
-         CorridorOutlineGeometry,
-         CornerType,
-         Cartesian3,
-         Cartographic,
-         Ellipsoid,
-         CesiumMath) {
+        'Core/CorridorOutlineGeometry',
+        'Core/Cartesian3',
+        'Core/CornerType',
+        'Core/Ellipsoid',
+        'Specs/createPackableSpecs'
+    ], function(
+        CorridorOutlineGeometry,
+        Cartesian3,
+        CornerType,
+        Ellipsoid,
+        createPackableSpecs) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     it('throws without positions', function() {
         expect(function() {
             return new CorridorOutlineGeometry({});
-        }).toThrowDeveloperError();
-    });
-
-    it('throws without 2 unique positions', function() {
-        expect(function() {
-            var ellipsoid = Ellipsoid.WGS84;
-            return CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-                positions : ellipsoid.cartographicArrayToCartesianArray([
-                    Cartographic.fromDegrees(90.0, -30.0),
-                    Cartographic.fromDegrees(90.0, -30.0)
-                ]),
-                width: 10000
-            }));
         }).toThrowDeveloperError();
     });
 
@@ -43,12 +28,22 @@ defineSuite([
         }).toThrowDeveloperError();
     });
 
+    it('createGeometry returns undefined without 2 unique positions', function() {
+        var geometry = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
+            positions : Cartesian3.fromDegreesArray([
+                90.0, -30.0,
+                90.0, -30.0
+            ]),
+            width: 10000
+        }));
+        expect(geometry).not.toBeDefined();
+    });
+
     it('computes positions', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-            positions : ellipsoid.cartographicArrayToCartesianArray([
-                Cartographic.fromDegrees(90.0, -30.0),
-                Cartographic.fromDegrees(90.0, -35.0)
+            positions : Cartesian3.fromDegreesArray([
+                90.0, -30.0,
+                90.0, -35.0
             ]),
             cornerType: CornerType.MITERED,
             width : 30000
@@ -59,11 +54,10 @@ defineSuite([
     });
 
     it('computes positions extruded', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-            positions : ellipsoid.cartographicArrayToCartesianArray([
-                 Cartographic.fromDegrees(90.0, -30.0),
-                 Cartographic.fromDegrees(90.0, -35.0)
+            positions : Cartesian3.fromDegreesArray([
+                 90.0, -30.0,
+                 90.0, -35.0
             ]),
             cornerType: CornerType.MITERED,
             width : 30000,
@@ -75,12 +69,11 @@ defineSuite([
     });
 
     it('computes right turn', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-            positions : ellipsoid.cartographicArrayToCartesianArray([
-                Cartographic.fromDegrees(90.0, -30.0),
-                Cartographic.fromDegrees(90.0, -31.0),
-                Cartographic.fromDegrees(91.0, -31.0)
+            positions : Cartesian3.fromDegreesArray([
+                90.0, -30.0,
+                90.0, -31.0,
+                91.0, -31.0
             ]),
             cornerType: CornerType.MITERED,
             width : 30000
@@ -91,12 +84,11 @@ defineSuite([
     });
 
     it('computes left turn', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-            positions : ellipsoid.cartographicArrayToCartesianArray([
-                Cartographic.fromDegrees(90.0, -30.0),
-                Cartographic.fromDegrees(90.0, -31.0),
-                Cartographic.fromDegrees(89.0, -31.0)
+            positions : Cartesian3.fromDegreesArray([
+                90.0, -30.0,
+                90.0, -31.0,
+                89.0, -31.0
             ]),
             cornerType: CornerType.MITERED,
             width : 30000
@@ -107,13 +99,12 @@ defineSuite([
     });
 
     it('computes with rounded corners', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-            positions : ellipsoid.cartographicArrayToCartesianArray([
-                Cartographic.fromDegrees(90.0, -30.0),
-                Cartographic.fromDegrees(90.0, -31.0),
-                Cartographic.fromDegrees(89.0, -31.0),
-                Cartographic.fromDegrees(89.0, -32.0)
+            positions : Cartesian3.fromDegreesArray([
+                90.0, -30.0,
+                90.0, -31.0,
+                89.0, -31.0,
+                89.0, -32.0
             ]),
             cornerType: CornerType.ROUNDED,
             width : 30000
@@ -126,13 +117,12 @@ defineSuite([
     });
 
     it('computes with beveled corners', function() {
-        var ellipsoid = Ellipsoid.WGS84;
         var m = CorridorOutlineGeometry.createGeometry(new CorridorOutlineGeometry({
-            positions : ellipsoid.cartographicArrayToCartesianArray([
-                 Cartographic.fromDegrees(90.0, -30.0),
-                 Cartographic.fromDegrees(90.0, -31.0),
-                 Cartographic.fromDegrees(89.0, -31.0),
-                 Cartographic.fromDegrees(89.0, -32.0)
+            positions : Cartesian3.fromDegreesArray([
+                 90.0, -30.0,
+                 90.0, -31.0,
+                 89.0, -31.0,
+                 89.0, -32.0
             ]),
             cornerType: CornerType.BEVELED,
             width : 30000
@@ -141,4 +131,19 @@ defineSuite([
         expect(m.attributes.position.values.length).toEqual(3 * 10);
         expect(m.indices.length).toEqual(2 * 10);
     });
+
+    var positions = Cartesian3.fromDegreesArray([
+         90.0, -30.0,
+         90.0, -31.0
+    ]);
+    var corridor = new CorridorOutlineGeometry({
+        positions : positions,
+        cornerType: CornerType.BEVELED,
+        width : 30000.0,
+        granularity : 0.1
+    });
+    var packedInstance = [2, positions[0].x, positions[0].y, positions[0].z, positions[1].x, positions[1].y, positions[1].z];
+    packedInstance.push(Ellipsoid.WGS84.radii.x, Ellipsoid.WGS84.radii.y, Ellipsoid.WGS84.radii.z);
+    packedInstance.push(30000.0, 0.0, 0.0, 2.0, 0.1);
+    createPackableSpecs(CorridorOutlineGeometry, corridor, packedInstance);
 });

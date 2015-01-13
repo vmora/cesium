@@ -1,14 +1,20 @@
 /*global define*/
 define([
+        './Cartesian3',
         './defaultValue',
         './defined',
         './DeveloperError',
-        './EllipseGeometry'
+        './EllipseGeometry',
+        './Ellipsoid',
+        './VertexFormat'
     ], function(
+        Cartesian3,
         defaultValue,
         defined,
         DeveloperError,
-        EllipseGeometry) {
+        EllipseGeometry,
+        Ellipsoid,
+        VertexFormat) {
     "use strict";
 
     /**
@@ -17,6 +23,7 @@ define([
      * @alias CircleGeometry
      * @constructor
      *
+     * @param {Object} options Object with the following properties:
      * @param {Cartesian3} options.center The circle's center point in the fixed frame.
      * @param {Number} options.radius The radius in meters.
      * @param {Ellipsoid} [options.ellipsoid=Ellipsoid.WGS84] The ellipsoid the circle will be on.
@@ -26,19 +33,18 @@ define([
      * @param {Number} [options.extrudedHeight=0.0] The height of the extrusion relative to the ellipsoid.
      * @param {Number} [options.stRotation=0.0] The rotation of the texture coordinates, in radians. A positive rotation is counter-clockwise.
      *
-     * @exception {DeveloperError} center is required.
-     * @exception {DeveloperError} radius is required.
      * @exception {DeveloperError} radius must be greater than zero.
      * @exception {DeveloperError} granularity must be greater than zero.
      *
-     * @see CircleGeometry#createGeometry
+     * @see CircleGeometry.createGeometry
+     * @see Packable
+     *
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Circle.html|Cesium Sandcastle Circle Demo}
      *
      * @example
      * // Create a circle.
-     * var ellipsoid = Cesium.Ellipsoid.WGS84;
      * var circle = new Cesium.CircleGeometry({
-     *   ellipsoid : ellipsoid,
-     *   center : ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.59777, 40.03883)),
+     *   center : Cesium.Cartesian3.fromDegrees(-75.59777, 40.03883),
      *   radius : 100000.0
      * });
      * var geometry = Cesium.CircleGeometry.createGeometry(circle);
@@ -72,8 +78,76 @@ define([
     };
 
     /**
+     * The number of elements used to pack the object into an array.
+     * @type {Number}
+     */
+    CircleGeometry.packedLength = EllipseGeometry.packedLength;
+
+    /**
+     * Stores the provided instance into the provided array.
+     * @function
+     *
+     * @param {Object} value The value to pack.
+     * @param {Number[]} array The array to pack into.
+     * @param {Number} [startingIndex=0] The index into the array at which to start packing the elements.
+     */
+    CircleGeometry.pack = function(value, array, startingIndex) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(value)) {
+            throw new DeveloperError('value is required');
+        }
+        //>>includeEnd('debug');
+        EllipseGeometry.pack(value._ellipseGeometry, array, startingIndex);
+    };
+
+    var scratchEllipseGeometry = new EllipseGeometry({
+        center : new Cartesian3(),
+        semiMajorAxis : 1.0,
+        semiMinorAxis : 1.0
+    });
+    var scratchOptions = {
+        center : new Cartesian3(),
+        radius : undefined,
+        ellipsoid : Ellipsoid.clone(Ellipsoid.UNIT_SPHERE),
+        height : undefined,
+        extrudedHeight : undefined,
+        granularity : undefined,
+        vertexFormat : new VertexFormat(),
+        stRotation : undefined,
+        semiMajorAxis : undefined,
+        semiMinorAxis : undefined
+    };
+
+    /**
+     * Retrieves an instance from a packed array.
+     *
+     * @param {Number[]} array The packed array.
+     * @param {Number} [startingIndex=0] The starting index of the element to be unpacked.
+     * @param {CircleGeometry} [result] The object into which to store the result.
+     */
+    CircleGeometry.unpack = function(array, startingIndex, result) {
+        var ellipseGeometry = EllipseGeometry.unpack(array, startingIndex, scratchEllipseGeometry);
+        scratchOptions.center = Cartesian3.clone(ellipseGeometry._center, scratchOptions.center);
+        scratchOptions.ellipsoid = Ellipsoid.clone(ellipseGeometry._ellipsoid, scratchOptions.ellipsoid);
+        scratchOptions.height = ellipseGeometry._height;
+        scratchOptions.extrudedHeight = ellipseGeometry._extrudedHeight;
+        scratchOptions.granularity = ellipseGeometry._granularity;
+        scratchOptions.vertexFormat = VertexFormat.clone(ellipseGeometry._vertexFormat, scratchOptions.vertexFormat);
+        scratchOptions.stRotation = ellipseGeometry._stRotation;
+
+        if (!defined(result)) {
+            scratchOptions.radius = ellipseGeometry._semiMajorAxis;
+            return new CircleGeometry(scratchOptions);
+        }
+
+        scratchOptions.semiMajorAxis = ellipseGeometry._semiMajorAxis;
+        scratchOptions.semiMinorAxis = ellipseGeometry._semiMinorAxis;
+        result._ellipseGeometry = new EllipseGeometry(scratchOptions);
+        return result;
+    };
+
+    /**
      * Computes the geometric representation of a circle on an ellipsoid, including its vertices, indices, and a bounding sphere.
-     * @memberof CircleGeometry
      *
      * @param {CircleGeometry} circleGeometry A description of the circle.
      * @returns {Geometry} The computed vertices and indices.

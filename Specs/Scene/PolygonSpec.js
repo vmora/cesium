@@ -1,53 +1,51 @@
 /*global defineSuite*/
 defineSuite([
-         'Scene/Polygon',
-         'Specs/createContext',
-         'Specs/destroyContext',
-         'Specs/createCamera',
-         'Specs/createFrameState',
-         'Specs/createScene',
-         'Specs/destroyScene',
-         'Specs/frameState',
-         'Specs/pick',
-         'Specs/render',
-         'Core/defaultValue',
-         'Core/BoundingSphere',
-         'Core/Cartesian3',
-         'Core/Cartographic',
-         'Core/Ellipsoid',
-         'Core/Math',
-         'Renderer/ClearCommand',
-         'Scene/Material',
-         'Scene/SceneMode'
-     ], function(
-         Polygon,
-         createContext,
-         destroyContext,
-         createCamera,
-         createFrameState,
-         createScene,
-         destroyScene,
-         frameState,
-         pick,
-         render,
-         defaultValue,
-         BoundingSphere,
-         Cartesian3,
-         Cartographic,
-         Ellipsoid,
-         CesiumMath,
-         ClearCommand,
-         Material,
-         SceneMode) {
+        'Scene/Polygon',
+        'Core/BoundingSphere',
+        'Core/Cartesian3',
+        'Core/defaultValue',
+        'Core/Ellipsoid',
+        'Core/Math',
+        'Renderer/ClearCommand',
+        'Scene/Material',
+        'Scene/SceneMode',
+        'Specs/createCamera',
+        'Specs/createContext',
+        'Specs/createFrameState',
+        'Specs/createScene',
+        'Specs/destroyContext',
+        'Specs/destroyScene',
+        'Specs/pick',
+        'Specs/render'
+    ], function(
+        Polygon,
+        BoundingSphere,
+        Cartesian3,
+        defaultValue,
+        Ellipsoid,
+        CesiumMath,
+        ClearCommand,
+        Material,
+        SceneMode,
+        createCamera,
+        createContext,
+        createFrameState,
+        createScene,
+        destroyContext,
+        destroyScene,
+        pick,
+        render) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     var context;
+    var frameState;
     var polygon;
     var us;
 
     beforeAll(function() {
         context = createContext();
+        frameState = createFrameState();
     });
 
     afterAll(function() {
@@ -55,8 +53,12 @@ defineSuite([
     });
 
     beforeEach(function() {
-        us = context.getUniformState();
-        us.update(context, createFrameState(createCamera(context, new Cartesian3(1.02, 0.0, 0.0), Cartesian3.ZERO, Cartesian3.UNIT_Z)));
+        us = context.uniformState;
+        us.update(context, createFrameState(createCamera({
+            eye : new Cartesian3(1.02, 0.0, 0.0),
+            target : Cartesian3.ZERO,
+            up : Cartesian3.UNIT_Z
+        })));
     });
 
     afterEach(function() {
@@ -74,12 +76,12 @@ defineSuite([
         return new Polygon({
             ellipsoid : ellipsoid,
             granularity : CesiumMath.toRadians(20.0),
-            positions : [
-                ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0)),
-                ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(50.0, -50.0, 0.0)),
-                ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(50.0, 50.0, 0.0)),
-                ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0))
-            ],
+            positions : Cartesian3.fromDegreesArray([
+                -50.0, -50.0,
+                50.0, -50.0,
+                50.0, 50.0,
+                -50.0, 50.0
+            ], ellipsoid),
             material : material,
             id : options.id,
             asynchronous : false,
@@ -108,7 +110,7 @@ defineSuite([
         });
 
         expect(polygon.ellipsoid).toEqual(Ellipsoid.UNIT_SPHERE);
-        expect(polygon.getPositions()).toEqual(positions);
+        expect(polygon.positions).toEqual(positions);
         expect(polygon.granularity).toEqual(CesiumMath.toRadians(10.0));
         expect(polygon.height).toEqual(100.0);
         expect(polygon.textureRotationAngle).toEqual(CesiumMath.toRadians(45.0));
@@ -127,11 +129,11 @@ defineSuite([
                      new Cartesian3(7.0, 8.0, 9.0)
                  ],
                  polygonHierarchy : {
-                     positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                         new Cartographic.fromDegrees(-124.0, 35.0, 0.0),
-                         new Cartographic.fromDegrees(-110.0, 35.0, 0.0),
-                         new Cartographic.fromDegrees(-110.0, 40.0, 0.0),
-                         new Cartographic.fromDegrees(-124.0, 40.0, 0.0)
+                     positions : Cartesian3.fromDegreesArray([
+                         -124.0, 35.0,
+                         -110.0, 35.0,
+                         -110.0, 40.0,
+                         -124.0, 40.0
                     ])
                 }
             });
@@ -159,41 +161,41 @@ defineSuite([
             new Cartesian3(7.0, 8.0, 9.0)
         ];
 
-        expect(polygon.getPositions()).not.toBeDefined();
+        expect(polygon.positions).not.toBeDefined();
 
-        polygon.setPositions(positions);
-        expect(polygon.getPositions()).toEqual(positions);
+        polygon.positions = positions;
+        expect(polygon.positions).toEqual(positions);
     });
 
-    it('setPositions throws with less than three positions', function() {
+    it('positions throws with less than three positions', function() {
         polygon = new Polygon();
 
         expect(function() {
-            polygon.setPositions([new Cartesian3()]);
+            polygon.positions = [new Cartesian3()];
         }).toThrowDeveloperError();
     });
 
     it('configure polygon from hierarchy', function() {
         var hierarchy = {
-                positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                    new Cartographic.fromDegrees(-124.0, 35.0, 0.0),
-                    new Cartographic.fromDegrees(-110.0, 35.0, 0.0),
-                    new Cartographic.fromDegrees(-110.0, 40.0, 0.0),
-                    new Cartographic.fromDegrees(-124.0, 40.0, 0.0)
+                positions : Cartesian3.fromDegreesArray([
+                    -124.0, 35.0,
+                    -110.0, 35.0,
+                    -110.0, 40.0,
+                    -124.0, 40.0
                 ]),
                 holes : [{
-                        positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                            new Cartographic.fromDegrees(-122.0, 36.0, 0.0),
-                            new Cartographic.fromDegrees(-122.0, 39.0, 0.0),
-                            new Cartographic.fromDegrees(-112.0, 39.0, 0.0),
-                            new Cartographic.fromDegrees(-112.0, 36.0, 0.0)
+                        positions : Cartesian3.fromDegreesArray([
+                            -122.0, 36.0,
+                            -122.0, 39.0,
+                            -112.0, 39.0,
+                            -112.0, 36.0
                         ]),
                         holes : [{
-                            positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                                new Cartographic.fromDegrees(-120.0, 36.5, 0.0),
-                                new Cartographic.fromDegrees(-114.0, 36.5, 0.0),
-                                new Cartographic.fromDegrees(-114.0, 38.5, 0.0),
-                                new Cartographic.fromDegrees(-120.0, 38.5, 0.0)
+                            positions : Cartesian3.fromDegreesArray([
+                                -120.0, 36.5,
+                                -114.0, 36.5,
+                                -114.0, 38.5,
+                                -120.0, 38.5
                             ])
                         }]
                 }]
@@ -201,30 +203,30 @@ defineSuite([
 
         polygon = createPolygon();
         polygon.configureFromPolygonHierarchy(hierarchy);
-        expect(polygon.getPositions()).not.toBeDefined();
+        expect(polygon.positions).not.toBeDefined();
     });
 
     it('configure polygon from clockwise hierarchy', function() {
         var hierarchy = {
-                positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                    new Cartographic.fromDegrees(-124.0, 35.0, 0.0),
-                    new Cartographic.fromDegrees(-124.0, 40.0, 0.0),
-                    new Cartographic.fromDegrees(-110.0, 40.0, 0.0),
-                    new Cartographic.fromDegrees(-110.0, 35.0, 0.0)
+                positions : Cartesian3.fromDegreesArray([
+                    -124.0, 35.0,
+                    -124.0, 40.0,
+                    -110.0, 40.0,
+                    -110.0, 35.0
                 ]),
                 holes : [{
-                        positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                            new Cartographic.fromDegrees(-122.0, 36.0, 0.0),
-                            new Cartographic.fromDegrees(-112.0, 36.0, 0.0),
-                            new Cartographic.fromDegrees(-112.0, 39.0, 0.0),
-                            new Cartographic.fromDegrees(-122.0, 39.0, 0.0)
+                        positions : Cartesian3.fromDegreesArray([
+                            -122.0, 36.0,
+                            -112.0, 36.0,
+                            -112.0, 39.0,
+                            -122.0, 39.0
                         ]),
                         holes : [{
-                            positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                                new Cartographic.fromDegrees(-120.0, 36.5, 0.0),
-                                new Cartographic.fromDegrees(-120.0, 38.5, 0.0),
-                                new Cartographic.fromDegrees(-114.0, 38.5, 0.0),
-                                new Cartographic.fromDegrees(-114.0, 36.5, 0.0)
+                            positions : Cartesian3.fromDegreesArray([
+                                -120.0, 36.5,
+                                -120.0, 38.5,
+                                -114.0, 38.5,
+                                -114.0, 36.5
                             ])
                         }]
                 }]
@@ -232,14 +234,12 @@ defineSuite([
 
         polygon = createPolygon();
         polygon.configureFromPolygonHierarchy(hierarchy);
-        expect(polygon.getPositions()).not.toBeDefined();
+        expect(polygon.positions).not.toBeDefined();
     });
 
     it('configureFromPolygonHierarchy throws with less than three positions', function() {
         var hierarchy = {
-                positions : Ellipsoid.WGS84.cartographicArrayToCartesianArray([
-                    new Cartographic()
-                ])
+                positions : [Cartesian3.fromDegrees(0,0)]
         };
         polygon = createPolygon();
         polygon.configureFromPolygonHierarchy(hierarchy);
@@ -308,68 +308,22 @@ defineSuite([
 
     it('renders bounding volume with debugShowBoundingVolume', function() {
         var scene = createScene();
-        scene.getPrimitives().add(createPolygon({
+        scene.primitives.add(createPolygon({
             debugShowBoundingVolume : true
         }));
 
-        var camera = scene.getCamera();
+        var camera = scene.camera;
         camera.position = new Cartesian3(1.02, 0.0, 0.0);
-        camera.direction = Cartesian3.negate(Cartesian3.UNIT_X);
+        camera.direction = Cartesian3.negate(Cartesian3.UNIT_X, new Cartesian3(), new Cartesian3());
         camera.up = Cartesian3.clone(Cartesian3.UNIT_Z);
 
-        scene.initializeFrame();
-        scene.render();
-        var pixels = scene.getContext().readPixels();
+        var pixels = scene.renderForSpecs();
         expect(pixels[0]).not.toEqual(0);
         expect(pixels[1]).toEqual(0);
         expect(pixels[2]).toEqual(0);
         expect(pixels[3]).toEqual(255);
 
         destroyScene(scene);
-    });
-
-    it('throws without positions due to duplicates', function() {
-        var ellipsoid = Ellipsoid.UNIT_SPHERE;
-
-        polygon = new Polygon();
-        polygon.ellipsoid = ellipsoid;
-        polygon.setPositions([
-            ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(0.0, 0.0, 0.0)),
-            ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(0.0, 0.0, 0.0)),
-            ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(0.0, 0.0, 0.0))
-        ]);
-        polygon.asynchronous = false;
-
-        expect(function() {
-            render(context, frameState, polygon);
-        }).toThrowDeveloperError();
-    });
-
-    it('throws without hierarchy positions due to duplicates', function() {
-        var ellipsoid = Ellipsoid.UNIT_SPHERE;
-        var hierarchy = {
-                positions : ellipsoid.cartographicArrayToCartesianArray([
-                    new Cartographic.fromDegrees(1.0, 1.0, 0.0),
-                    new Cartographic.fromDegrees(1.0, 1.0, 0.0),
-                    new Cartographic.fromDegrees(1.0, 1.0, 0.0)
-                ]),
-                holes : [{
-                        positions : ellipsoid.cartographicArrayToCartesianArray([
-                            new Cartographic.fromDegrees(0.0, 0.0, 0.0),
-                            new Cartographic.fromDegrees(0.0, 0.0, 0.0),
-                            new Cartographic.fromDegrees(0.0, 0.0, 0.0)
-                        ])
-                }]
-        };
-
-        polygon = new Polygon();
-        polygon.ellipsoid = ellipsoid;
-        polygon.configureFromPolygonHierarchy(hierarchy);
-        polygon.asynchronous = false;
-
-        expect(function () {
-            render(context, frameState, polygon);
-        }).toThrowDeveloperError();
     });
 
     it('is picked', function() {
@@ -403,23 +357,25 @@ defineSuite([
         var commandList = [];
         polygon.update(context, frameState, commandList);
         var boundingVolume = commandList[0].boundingVolume;
-        expect(boundingVolume).toEqual(BoundingSphere.fromPoints(polygon.getPositions()));
+        var sphere = BoundingSphere.fromPoints(polygon.positions);
+        expect(boundingVolume.center).toEqualEpsilon(sphere.center, CesiumMath.EPSILON1);
+        expect(boundingVolume.radius).toEqualEpsilon(sphere.radius, CesiumMath.EPSILON2);
     });
 
     function test2DBoundingSphereFromPositions(testMode) {
-        var projection = frameState.scene2D.projection;
-        var ellipsoid = projection.getEllipsoid();
-        var positions = [
-            Cartographic.fromDegrees(-1.0, -1.0, 0.0),
-            Cartographic.fromDegrees(1.0, -1.0, 0.0),
-            Cartographic.fromDegrees(1.0, 1.0, 0.0),
-            Cartographic.fromDegrees(-1.0, 1.0, 0.0)
-        ];
+        var projection = frameState.mapProjection;
+        var ellipsoid = projection.ellipsoid;
+        var positions = Cartesian3.fromDegreesArray([
+            -1.0, -1.0,
+            1.0, -1.0,
+            1.0, 1.0,
+            -1.0, 1.0
+        ], ellipsoid);
 
         var polygon = new Polygon();
         polygon.ellipsoid = ellipsoid;
         polygon.granularity = CesiumMath.toRadians(20.0);
-        polygon.setPositions(ellipsoid.cartographicArrayToCartesianArray(positions));
+        polygon.positions = positions;
         polygon.asynchronous = false;
         polygon.material.translucent = false;
 
@@ -430,7 +386,12 @@ defineSuite([
         var boundingVolume = commandList[0].boundingVolume;
         frameState.mode = mode;
 
-        var sphere = BoundingSphere.projectTo2D(BoundingSphere.fromPoints(polygon.getPositions()));
+        var projectedPositions = [];
+        for (var i = 0; i < positions.length; ++i) {
+            projectedPositions.push(projection.project(ellipsoid.cartesianToCartographic(positions[i])));
+        }
+
+        var sphere = BoundingSphere.fromPoints(projectedPositions);
         sphere.center.x = (testMode === SceneMode.SCENE2D) ? 0.0 : sphere.center.x;
         expect(boundingVolume.center).toEqualEpsilon(sphere.center, CesiumMath.EPSILON2);
         expect(boundingVolume.radius).toEqualEpsilon(sphere.radius, CesiumMath.EPSILON2);

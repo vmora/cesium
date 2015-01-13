@@ -1,13 +1,17 @@
 /*global define*/
-define(function() {
+define(['Core/defined'], function(defined) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     function createPackableSpecs(packable, instance, packedInstance) {
+        instance = JSON.parse(JSON.stringify(instance));
+        packedInstance = JSON.parse(JSON.stringify(packedInstance));
+
         it('can pack', function() {
             var packedArray = [];
             packable.pack(instance, packedArray);
-            expect(packedArray.length).toEqual(packable.packedLength);
+            var packedLength = defined(packable.packedLength) ? packable.packedLength : instance.packedLength;
+            expect(packedArray.length).toEqual(packedLength);
             expect(packedArray).toEqual(packedInstance);
         });
 
@@ -33,19 +37,19 @@ define(function() {
             var array = [];
             expect(function() {
                 packable.pack(undefined, array);
-            }).toThrow();
+            }).toThrowDeveloperError();
         });
 
         it('pack throws with undefined array', function() {
             expect(function() {
                 packable.pack(instance, undefined);
-            }).toThrow();
+            }).toThrowDeveloperError();
         });
 
         it('unpack throws with undefined array', function() {
             expect(function() {
                 packable.unpack(undefined);
-            }).toThrow();
+            }).toThrowDeveloperError();
         });
     }
 

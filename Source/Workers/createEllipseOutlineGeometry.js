@@ -1,31 +1,24 @@
 /*global define*/
 define([
         '../Core/Cartesian3',
+        '../Core/defined',
         '../Core/EllipseOutlineGeometry',
-        '../Core/Ellipsoid',
-        '../Scene/PrimitivePipeline',
-        './createTaskProcessorWorker'
+        '../Core/Ellipsoid'
     ], function(
         Cartesian3,
+        defined,
         EllipseOutlineGeometry,
-        Ellipsoid,
-        PrimitivePipeline,
-        createTaskProcessorWorker) {
+        Ellipsoid) {
     "use strict";
 
-    function createEllipseOutlineGeometry(parameters, transferableObjects) {
-        var ellipseGeometry = parameters.geometry;
+    function createEllipseOutlineGeometry(ellipseGeometry, offset) {
+        if (defined(offset)) {
+            ellipseGeometry = EllipseOutlineGeometry.unpack(ellipseGeometry, offset);
+        }
         ellipseGeometry._center = Cartesian3.clone(ellipseGeometry._center);
         ellipseGeometry._ellipsoid = Ellipsoid.clone(ellipseGeometry._ellipsoid);
-
-        var geometry = EllipseOutlineGeometry.createGeometry(ellipseGeometry);
-        PrimitivePipeline.transferGeometry(geometry, transferableObjects);
-
-        return {
-            geometry : geometry,
-            index : parameters.index
-        };
+        return EllipseOutlineGeometry.createGeometry(ellipseGeometry);
     }
 
-    return createTaskProcessorWorker(createEllipseOutlineGeometry);
+    return createEllipseOutlineGeometry;
 });

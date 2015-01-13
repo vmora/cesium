@@ -1,23 +1,27 @@
 /*global define*/
 define([
-        'Core/defined',
-        'DynamicScene/CzmlDataSource',
-        'DynamicScene/GeoJsonDataSource',
-        'Scene/PerformanceDisplay',
-        'Widgets/checkForChromeFrame',
-        'Widgets/Viewer/Viewer',
-        'Widgets/Viewer/viewerDragDropMixin',
-        'Widgets/Viewer/viewerDynamicObjectMixin',
+        'Cesium/Core/defined',
+        'Cesium/Core/formatError',
+        'Cesium/Core/getFilenameFromUri',
+        'Cesium/Core/queryToObject',
+        'Cesium/DataSources/CzmlDataSource',
+        'Cesium/DataSources/GeoJsonDataSource',
+        'Cesium/Scene/TileMapServiceImageryProvider',
+        'Cesium/Widgets/Viewer/Viewer',
+        'Cesium/Widgets/Viewer/viewerCesiumInspectorMixin',
+        'Cesium/Widgets/Viewer/viewerDragDropMixin',
         'domReady!'
     ], function(
         defined,
+        formatError,
+        getFilenameFromUri,
+        queryToObject,
         CzmlDataSource,
         GeoJsonDataSource,
-        PerformanceDisplay,
-        checkForChromeFrame,
+        TileMapServiceImageryProvider,
         Viewer,
-        viewerDragDropMixin,
-        viewerDynamicObjectMixin) {
+        viewerCesiumInspectorMixin,
+        viewerDragDropMixin) {
     "use strict";
     /*global console*/
 
@@ -27,118 +31,108 @@ define([
      * 'source' : 'file.czml',  // The relative URL of the CZML file to load at startup.
      * 'stats'  : true,         // Enable the FPS performance display.
      * 'theme'  : 'lighter',    // Use the dark-text-on-light-background theme.
+     * 'scene3DOnly' : false    // Enable 3D only mode
      */
-    var endUserOptions = {};
-    var queryString = window.location.search.substring(1);
-    if (queryString !== '') {
-        var params = queryString.split('&');
-        for ( var i = 0, len = params.length; i < len; ++i) {
-            var param = params[i];
-            var keyValuePair = param.split('=');
-            if (keyValuePair.length > 1) {
-                endUserOptions[keyValuePair[0]] = decodeURIComponent(keyValuePair[1].replace(/\+/g, ' '));
-            }
-        }
+    var endUserOptions = queryToObject(window.location.search.substring(1));
+
+    var imageryProvider;
+    if (endUserOptions.tmsImageryUrl) {
+        imageryProvider = new TileMapServiceImageryProvider({
+            url : endUserOptions.tmsImageryUrl
+        });
     }
 
     var loadingIndicator = document.getElementById('loadingIndicator');
-
-    checkForChromeFrame('cesiumContainer').then(function(prompting) {
-        if (!prompting) {
-            startup();
-        } else {
-            loadingIndicator.style.display = 'none';
-        }
-    }).otherwise(function(e) {
+    var viewer;
+    try {
+        viewer = new Viewer('cesiumContainer', {
+            imageryProvider : imageryProvider,
+            baseLayerPicker : !defined(imageryProvider),
+            scene3DOnly : endUserOptions.scene3DOnly
+        });
+    } catch (exception) {
         loadingIndicator.style.display = 'none';
-        console.error(e);
-        if (document.getElementsByClassName('cesium-widget-errorPanel').length < 1) {
-            window.alert(e);
+        var message = formatError(exception);
+        console.error(message);
+        if (!document.querySelector('.cesium-widget-errorPanel')) {
+            window.alert(message);
         }
+        return;
+    }
+
+    viewer.extend(viewerDragDropMixin);
+    if (endUserOptions.inspector) {
+        viewer.extend(viewerCesiumInspectorMixin);
+    }
+
+    var showLoadError = function(name, error) {
+        var title = 'An error occurred while loading the file: ' + name;
+        var message = 'An error occurred while loading the file, which may indicate that it is invalid.  A detailed error report is below:';
+        viewer.cesiumWidget.showErrorPanel(title, message, error);
+    };
+
+    viewer.dropError.addEventListener(function(viewerArg, name, error) {
+        showLoadError(name, error);
     });
 
-    function endsWith(str, suffix) {
-        var strLength = str.length;
-        var suffixLength = suffix.length;
-        return (suffixLength < strLength) && (str.indexOf(suffix, strLength - suffixLength) !== -1);
+    var scene = viewer.scene;
+    var context = scene.context;
+    if (endUserOptions.debug) {
+        context.validateShaderProgram = true;
+        context.validateFramebuffer = true;
+        context.logShaderCompilation = true;
+        context.throwOnWebGLError = true;
     }
 
-    function startup() {
-        var viewer = new Viewer('cesiumContainer');
-        viewer.extend(viewerDragDropMixin);
-        viewer.extend(viewerDynamicObjectMixin);
+    var source = endUserOptions.source;
+    if (defined(source)) {
+        var dataSource;
+        var loadPromise;
 
-        var showLoadError = function(name, error) {
-            var title = 'An error occurred while loading the file: ' + name;
-            viewer.cesiumWidget.showErrorPanel(title, error);
-            console.error(error);
-        };
-
-        viewer.dropError.addEventListener(function(viewerArg, name, error) {
-            showLoadError(name, error);
-        });
-
-        var scene = viewer.scene;
-        var context = scene.getContext();
-        if (endUserOptions.debug) {
-            context.setValidateShaderProgram(true);
-            context.setValidateFramebuffer(true);
-            context.setLogShaderCompilation(true);
-            context.setThrowOnWebGLError(true);
-        }
-
-        if (defined(endUserOptions.source)) {
-            var source;
-            var sourceUrl = endUserOptions.source.toUpperCase();
-            if (endsWith(sourceUrl, '.GEOJSON') || //
-                endsWith(sourceUrl, '.JSON') || //
-                endsWith(sourceUrl, '.TOPOJSON')) {
-                source = new GeoJsonDataSource();
-            } else if (endsWith(sourceUrl, '.CZML')) {
-                source = new CzmlDataSource();
-            } else {
-                loadingIndicator.style.display = 'none';
-
-                showLoadError(endUserOptions.source, 'Unknown format.');
-            }
-
-            if (defined(source)) {
-                source.loadUrl(endUserOptions.source).then(function() {
-                    viewer.dataSources.add(source);
-
-                    if (defined(endUserOptions.lookAt)) {
-                        var dynamicObject = source.getDynamicObjectCollection().getById(endUserOptions.lookAt);
-                        if (defined(dynamicObject)) {
-                            viewer.trackedObject = dynamicObject;
-                        } else {
-                            var error = 'No object with id "' + endUserOptions.lookAt + '" exists in the provided source.';
-                            showLoadError(endUserOptions.source, error);
-                        }
-                    }
-                }, function(error) {
-                    showLoadError(endUserOptions.source, error);
-                }).always(function() {
-                    loadingIndicator.style.display = 'none';
-                });
-            }
+        if (/\.czml$/i.test(source)) {
+            dataSource = new CzmlDataSource(getFilenameFromUri(source));
+            loadPromise = dataSource.loadUrl(source);
+        } else if (/\.geojson$/i.test(source) || /\.json$/i.test(source) || /\.topojson$/i.test(source)) {
+            dataSource = new GeoJsonDataSource(getFilenameFromUri(source));
+            loadPromise = dataSource.loadUrl(source);
         } else {
-            loadingIndicator.style.display = 'none';
+            showLoadError(source, 'Unknown format.');
         }
 
-        if (endUserOptions.stats) {
-            scene.debugShowFramesPerSecond = true;
-        }
+        if (defined(dataSource)) {
+            viewer.dataSources.add(dataSource);
 
-        var theme = endUserOptions.theme;
-        if (defined(theme)) {
-            if (endUserOptions.theme === 'lighter') {
-                document.body.classList.add('cesium-lighter');
-                viewer.animation.applyThemeChanges();
-            } else {
-                var error = 'Unknown theme: ' + theme;
-                viewer.cesiumWidget.showErrorPanel(error);
-                console.error(error);
-            }
+            loadPromise.then(function() {
+                var lookAt = endUserOptions.lookAt;
+                if (defined(lookAt)) {
+                    var entity = dataSource.entities.getById(lookAt);
+                    if (defined(entity)) {
+                        viewer.trackedEntity = entity;
+                    } else {
+                        var error = 'No entity with id "' + lookAt + '" exists in the provided data source.';
+                        showLoadError(source, error);
+                    }
+                }
+            }).otherwise(function(error) {
+                showLoadError(source, error);
+            });
         }
     }
+
+    if (endUserOptions.stats) {
+        scene.debugShowFramesPerSecond = true;
+    }
+
+    var theme = endUserOptions.theme;
+    if (defined(theme)) {
+        if (endUserOptions.theme === 'lighter') {
+            document.body.classList.add('cesium-lighter');
+            viewer.animation.applyThemeChanges();
+        } else {
+            var error = 'Unknown theme: ' + theme;
+            viewer.cesiumWidget.showErrorPanel(error, '');
+        }
+    }
+
+    loadingIndicator.style.display = 'none';
 });

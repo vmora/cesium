@@ -1,59 +1,48 @@
 /*global defineSuite*/
 defineSuite([
-         'Scene/MaterialAppearance',
-         'Scene/Appearance',
-         'Scene/Material',
-         'Scene/Primitive',
-         'Core/ExtentGeometry',
-         'Core/Extent',
-         'Core/GeometryInstance',
-         'Core/ColorGeometryInstanceAttribute',
-         'Renderer/ClearCommand',
-         'Specs/render',
-         'Specs/createContext',
-         'Specs/destroyContext',
-         'Specs/createFrameState'
-     ], function(
-         MaterialAppearance,
-         Appearance,
-         Material,
-         Primitive,
-         ExtentGeometry,
-         Extent,
-         GeometryInstance,
-         ColorGeometryInstanceAttribute,
-         ClearCommand,
-         render,
-         createContext,
-         destroyContext,
-         createFrameState) {
+        'Scene/MaterialAppearance',
+        'Core/ColorGeometryInstanceAttribute',
+        'Core/defaultValue',
+        'Core/GeometryInstance',
+        'Core/Rectangle',
+        'Core/RectangleGeometry',
+        'Renderer/ClearCommand',
+        'Scene/Appearance',
+        'Scene/Material',
+        'Scene/Primitive',
+        'Specs/createContext',
+        'Specs/createFrameState',
+        'Specs/destroyContext',
+        'Specs/render'
+    ], function(
+        MaterialAppearance,
+        ColorGeometryInstanceAttribute,
+        defaultValue,
+        GeometryInstance,
+        Rectangle,
+        RectangleGeometry,
+        ClearCommand,
+        Appearance,
+        Material,
+        Primitive,
+        createContext,
+        createFrameState,
+        destroyContext,
+        render) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     var context;
     var frameState;
     var primitive;
+    var rectangle = Rectangle.fromDegrees(-10.0, -10.0, 10.0, 10.0);
 
     beforeAll(function() {
         context = createContext();
         frameState = createFrameState();
 
-        var extent = Extent.fromDegrees(-10.0, -10.0, 10.0, 10.0);
-        primitive = new Primitive({
-            geometryInstances : new GeometryInstance({
-                geometry : new ExtentGeometry({
-                    vertexFormat : MaterialAppearance.MaterialSupport.ALL.vertexFormat,
-                    extent : extent
-                }),
-                attributes : {
-                    color : new ColorGeometryInstanceAttribute(1.0, 1.0, 0.0, 1.0)
-                }
-            }),
-            asynchronous : false
-        });
-
-        frameState.camera.controller.viewExtent(extent);
-        var us = context.getUniformState();
+        frameState.camera.viewRectangle(rectangle);
+        var us = context.uniformState;
         us.update(context, frameState);
     });
 
@@ -61,6 +50,22 @@ defineSuite([
         primitive = primitive && primitive.destroy();
         destroyContext(context);
     });
+
+    function createPrimitive(vertexFormat) {
+        vertexFormat = defaultValue(vertexFormat, MaterialAppearance.MaterialSupport.ALL.vertexFormat);
+        primitive = new Primitive({
+            geometryInstances : new GeometryInstance({
+                geometry : new RectangleGeometry({
+                    vertexFormat : vertexFormat,
+                    rectangle : rectangle
+                }),
+                attributes : {
+                    color : new ColorGeometryInstanceAttribute(1.0, 1.0, 0.0, 1.0)
+                }
+            }),
+            asynchronous : false
+        });
+    }
 
     it('constructor', function() {
         var a = new MaterialAppearance();
@@ -73,12 +78,13 @@ defineSuite([
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(true, false));
         expect(a.vertexFormat).toEqual(MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat);
         expect(a.flat).toEqual(false);
-        expect(a.faceForward).toEqual(false);
+        expect(a.faceForward).toEqual(true);
         expect(a.translucent).toEqual(true);
         expect(a.closed).toEqual(false);
     });
 
     it('renders basic', function() {
+        createPrimitive(MaterialAppearance.MaterialSupport.BASIC.vertexFormat);
         primitive.appearance = new MaterialAppearance({
             materialSupport : MaterialAppearance.MaterialSupport.BASIC,
             translucent : false,
@@ -94,6 +100,7 @@ defineSuite([
     });
 
     it('renders textured', function() {
+        createPrimitive(MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat);
         primitive.appearance = new MaterialAppearance({
             materialSupport : MaterialAppearance.MaterialSupport.TEXTURED,
             translucent : false,
@@ -109,6 +116,7 @@ defineSuite([
     });
 
     it('renders all', function() {
+        createPrimitive(MaterialAppearance.MaterialSupport.ALL.vertexFormat);
         primitive.appearance = new MaterialAppearance({
             materialSupport : MaterialAppearance.MaterialSupport.ALL,
             translucent : false,
