@@ -16,8 +16,8 @@ Cesium.isReady.then(function() {
         var result = [];
 
         var geodesic = new Cesium.EllipsoidGeodesic(departCart, arriveCart);
-        var distance = geodesic.getSurfaceDistance();
-        var dt = departTime.getSecondsDifference(arriveTime);
+        var distance = geodesic.surfaceDistance;
+        var dt = Cesium.JulianDate.secondsDifference(departTime, arriveTime);
 
         var segs = Math.ceil(distance / horizontalThreshold);
         if (segs < 3) {
@@ -52,8 +52,12 @@ Cesium.isReady.then(function() {
     var arc = generateFlightArc(departCart, departTime, arriveCart, arriveTime);
 
     var czml = [ {
+        "id" : "document",
+        "version" : "1.0"
+      },
+      {
         "id" : "Vehicle",
-        "availability" : departTime.toIso8601() + "/" + arriveTime.toIso8601(),
+        "availability" : Cesium.JulianDate.toIso8601(departTime) + "/" + Cesium.JulianDate.toIso8601(arriveTime),
         "point" : {
             'color' : {
                 'rgba' : [ 255, 0, 0, 255 ]
@@ -73,7 +77,7 @@ Cesium.isReady.then(function() {
         "position" : {
             "interpolationAlgorithm" : "LAGRANGE",
             "interpolationDegree" : 1,
-            "epoch" : departTime.toIso8601(),
+            "epoch" : Cesium.JulianDate.toIso8601(departTime),
             "cartographicRadians" : arc
         }
     } ];

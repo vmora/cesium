@@ -146,7 +146,8 @@ define([
         internetExplorerVersion : internetExplorerVersion,
         isFirefox : isFirefox,
         firefoxVersion : firefoxVersion,
-        hardwareConcurrency : defaultValue(navigator.hardwareConcurrency, 3)
+//      hardwareConcurrency : defaultValue(navigator.hardwareConcurrency, 3)
+        hardwareConcurrency : 3
     };
 
     /**
