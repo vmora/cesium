@@ -11,10 +11,15 @@ define([
         '../Core/PolygonPipeline',
         '../Core/WindingOrder',
         '../Renderer/DrawCommand',
+        '../Shaders/ShadowVolumeFS',
+        '../Shaders/ShadowVolumeVS',
         './BlendingState',
         './CullFace',
+        './DepthFunction',
         './Pass',
-        './ShadowVolume'
+        './ShadowVolume',
+        './StencilFunction',
+        './StencilOperation'
     ], function(
         ComponentDatatype,
         Color,
@@ -27,10 +32,15 @@ define([
         PolygonPipeline,
         WindingOrder,
         DrawCommand,
+        ShadowVolumeFS,
+        ShadowVolumeVS,
         BlendingState,
         CullFace,
+        DepthFunction,
         Pass,
-        ShadowVolume) {
+        ShadowVolume,
+        StencilFunction,
+        StencilOperation) {
     "use strict";
 
     var PolygonOnTerrain = function(options) {
@@ -49,11 +59,17 @@ define([
         this._rs = undefined;
 
         this._commands = [];
+
+        this._zFailCommands = [];
+        this._zPassCommands = [];
+        this._colorInsideSphereCommands = [];
+        this._colorOutsideSphereCommands = [];
     };
 
     var attributeLocations = {
         positionHigh : 0,
-        positionLow : 1
+        positionLow : 1,
+        normal : 2
     };
 
     PolygonOnTerrain.prototype.update = function(context, frameState, commandList) {
@@ -73,6 +89,7 @@ define([
             for (var i = 0; i < positions.length; ++i) {
                 boundaryIndices.push(i);
             }
+            boundaryIndices.push(0);
 
             var tangentPlane = EllipsoidTangentPlane.fromPoints(positions, ellipsoid);
             var positions2D = tangentPlane.projectPointsOntoPlane(positions);
@@ -103,18 +120,23 @@ define([
 
             var attributes = [{
                 index                  : attributeLocations.positionHigh,
-                vertexBuffer           : shadowVolume.vertexBuffer,
+                vertexBuffer           : shadowVolume.positionBuffer,
                 componentsPerAttribute : 3,
                 componentDatatype      : ComponentDatatype.FLOAT,
                 offsetInBytes          : 0,
                 strideInBytes          : ComponentDatatype.getSizeInBytes(ComponentDatatype.FLOAT) * 3 * 2
             }, {
                 index                  : attributeLocations.positionLow,
-                vertexBuffer           : shadowVolume.vertexBuffer,
+                vertexBuffer           : shadowVolume.positionBuffer,
                 componentsPerAttribute : 3,
                 componentDatatype      : ComponentDatatype.FLOAT,
                 offsetInBytes          : ComponentDatatype.getSizeInBytes(ComponentDatatype.FLOAT) * 3,
                 strideInBytes          : ComponentDatatype.getSizeInBytes(ComponentDatatype.FLOAT) * 3 * 2
+            }, {
+                index                  : attributeLocations.normal,
+                vertexBuffer           : shadowVolume.normalBuffer,
+                componentsPerAttribute : 3,
+                componentDatatype      : ComponentDatatype.FLOAT
             }];
 
             this._va = context.createVertexArray(attributes, shadowVolume.indexBuffer);
@@ -124,63 +146,201 @@ define([
         }
 
         if (!defined(this._sp)) {
-            var vs =
-                'attribute vec3 positionHigh;\n' +
-                'attribute vec3 positionLow;\n' +
-                'void main() {\n' +
-                '    gl_Position = czm_modelViewProjectionRelativeToEye * czm_translateRelativeToEye(positionHigh, positionLow);\n' +
-                '}\n';
-
-            var fs =
-                'uniform vec4 color;\n' +
-                'void main() {\n' +
-                //'    gl_FragColor = vec4(1.0, 1.0, 0.0, 0.5);\n' +
-                '    gl_FragColor = color;\n' +
-                '}\n';
-
-            this._sp = context.createShaderProgram(vs, fs, attributeLocations);
+            this._sp = context.createShaderProgram(ShadowVolumeVS, ShadowVolumeFS, attributeLocations);
         }
 
-        if (this._commands.length === 0) {
-            this._rs = context.createRenderState({
-                blending : BlendingState.ALPHA_BLEND,
-                depthMask : false,
-                depthTest : {
-                    enabled : false
+        if (this._zFailCommands.length === 0) {
+            var uniformMap = {
+                centralBodyMinimumAltitude : function() {
+                    return -100.0;
                 },
+                LODNegativeToleranceOverDistance : function() {
+                    return -2;
+                }
+            };
+
+            var disableColorWrites = {
+                red : false,
+                green : false,
+                blue : false,
+                alpha : false
+            };
+
+            var zFailRenderState = context.createRenderState({
+                colorMask : disableColorWrites,
+                stencilTest : {
+                    enabled : true,
+                    frontFunction : StencilFunction.ALWAYS,
+                    frontOperation : {
+                        fail : StencilOperation.KEEP,
+                        zFail : StencilOperation.DECREMENT_WRAP,
+                        zPass : StencilOperation.KEEP
+                    },
+                    backFunction : StencilFunction.ALWAYS,
+                    backOperation : {
+                        fail : StencilOperation.KEEP,
+                        zFail : StencilOperation.INCREMENT_WRAP,
+                        zPass : StencilOperation.KEEP
+                    },
+                    reference : 0,
+                    mask : ~0
+                },
+                depthTest : {
+                    enabled : true
+                },
+                depthMask : false
+            });
+
+            var commands = this._capsAndWalls;
+            var commandsLength = commands.length;
+            var j;
+            for (j = 0; j < commandsLength; ++j) {
+                this._zFailCommands.push(new DrawCommand({
+                    primitiveType : commands[j].primitiveType,
+                    offset : commands[j].offset,
+                    count : commands[j].count,
+                    vertexArray : this._va,
+                    renderState : zFailRenderState,
+                    shaderProgram : this._sp,
+                    uniformMap : uniformMap,
+                    owner : this,
+                    modelMatrix : Matrix4.IDENTITY,
+                    pass : Pass.TRANSLUCENT
+                }));
+            }
+
+            var zPassRenderState = context.createRenderState({
+                colorMask : disableColorWrites,
+                stencilTest : {
+                    enabled : true,
+                    frontFunction : StencilFunction.ALWAYS,
+                    frontOperation : {
+                        fail : StencilOperation.KEEP,
+                        zFail : StencilOperation.KEEP,
+                        zPass : StencilOperation.INCREMENT_WRAP
+                    },
+                    backFunction : StencilFunction.ALWAYS,
+                    backOperation : {
+                        fail : StencilOperation.KEEP,
+                        zFail : StencilOperation.KEEP,
+                        zPass : StencilOperation.DECREMENT_WRAP
+                    },
+                    reference : 0,
+                    mask : ~0
+                },
+                depthTest : {
+                    enabled : true
+                },
+                depthMask : false
+            });
+
+            commands = this._topCapAndWalls;
+            commandsLength = commands.length;
+            for (j = 0; j < commandsLength; ++j) {
+                this._zPassCommands.push(new DrawCommand({
+                    primitiveType : commands[j].primitiveType,
+                    offset : commands[j].offset,
+                    count : commands[j].count,
+                    vertexArray : this._va,
+                    renderState : zPassRenderState,
+                    shaderProgram : this._sp,
+                    uniformMap : uniformMap,
+                    owner : this,
+                    modelMatrix : Matrix4.IDENTITY,
+                    pass : Pass.TRANSLUCENT
+                }));
+            }
+
+            var colorStencilTest = {
+                enabled : true,
+                frontFunction : StencilFunction.NOT_EQUAL,
+                frontOperation : {
+                    fail : StencilOperation.KEEP,
+                    zFail : StencilOperation.KEEP,
+                    zPass : StencilOperation.DECREMENT
+                },
+                backFunction : StencilFunction.NOT_EQUAL,
+                backOperation : {
+                    fail : StencilOperation.KEEP,
+                    zFail : StencilOperation.KEEP,
+                    zPass : StencilOperation.DECREMENT
+                },
+                reference : 0,
+                mask : ~0
+            };
+
+            var colorInsideSphereRenderState = context.createRenderState({
+                stencilTest : colorStencilTest,
+                depthTest : {
+                    enabled : true,
+                    func : DepthFunction.ALWAYS
+                },
+                depthMask : false
+            });
+
+            commands = this._capsAndWalls;
+            commandsLength = commands.length;
+            for (j = 0; j < commandsLength; ++j) {
+                this._colorInsideSphereCommands.push(new DrawCommand({
+                    primitiveType : commands[j].primitiveType,
+                    offset : commands[j].offset,
+                    count : commands[j].count,
+                    vertexArray : this._va,
+                    renderState : colorInsideSphereRenderState,
+                    shaderProgram : this._sp,
+                    uniformMap : uniformMap,
+                    owner : this,
+                    modelMatrix : Matrix4.IDENTITY,
+                    pass : Pass.TRANSLUCENT
+                }));
+            }
+
+            var colorOutsideSphereRenderState = context.createRenderState({
+                stencilTest : colorStencilTest,
                 cull : {
                     enabled : true,
                     face : CullFace.BACK
-                }
+                },
+                depthTest : {
+                    enabled : true
+                },
+                depthMask : false
             });
 
-            var drawCommands = this._capsAndWalls;
-            var length = drawCommands.length;
-            for (var j = 0; j < length; ++j) {
-                var color = Color.fromRandom({alpha : 0.5});
-                this._commands.push(new DrawCommand({
-                    primitiveType : drawCommands[j].primitiveType,
-                    offset : drawCommands[j].offset,
-                    count : drawCommands[j].count,
+            commands = this._topCapAndWalls;
+            commandsLength = commands.length;
+            for (j = 0; j < commandsLength; ++j) {
+                this._colorOutsideSphereCommands.push(new DrawCommand({
+                    primitiveType : commands[j].primitiveType,
+                    offset : commands[j].offset,
+                    count : commands[j].count,
                     vertexArray : this._va,
-                    renderState : this._rs,
+                    renderState : colorOutsideSphereRenderState,
                     shaderProgram : this._sp,
+                    uniformMap : uniformMap,
                     owner : this,
                     modelMatrix : Matrix4.IDENTITY,
-                    pass : Pass.TRANSLUCENT,
-                    uniformMap : {
-                        color : function() {
-                            return color;
-                        }
-                    }
+                    pass : Pass.TRANSLUCENT
                 }));
             }
         }
 
         var pass = frameState.passes;
         if (pass.render) {
-            for (var k = 0; k < this._commands.length; ++k) {
-                commandList.push(this._commands[k]);
+            // intersects near/far plane: z-fail else z-pass
+            // inside bounding sphere : colorInsideSphere commands else color outside
+
+            var k;
+            var stencilPassCommands = this._zPassCommands;
+            var stencilPassCommandsLength = stencilPassCommands.length;
+            for (k = 0; k < stencilPassCommandsLength; ++k) {
+                commandList.push(stencilPassCommands[k]);
+            }
+
+            var colorPassCommands = this._colorOutsideSphereCommands;
+            var colorPassCommandsLength = colorPassCommands.length;
+            for (k = 0; k < colorPassCommandsLength; ++k) {
+                commandList.push(colorPassCommands[k]);
             }
         }
     };

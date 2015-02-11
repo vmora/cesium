@@ -212,6 +212,9 @@ define([
         webglOptions.alpha = defaultValue(webglOptions.alpha, false); // WebGL default is true
         webglOptions.failIfMajorPerformanceCaveat = defaultValue(webglOptions.failIfMajorPerformanceCaveat, true); // WebGL default is false
 
+        // TODO
+        webglOptions.stencil = true;
+
         // Firefox 35 with ANGLE has a regression that causes alpha : false to affect all framebuffers
         // Since we can't detect for ANGLE without a context, we just detect for Windows.
         // https://github.com/AnalyticalGraphicsInc/cesium/issues/2431

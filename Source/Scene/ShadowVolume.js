@@ -79,6 +79,7 @@ define([
         var numberOfIndices = numTotalIndices + numberOfInteriorBoundariesIndices;
 
         var vbPositions = new Float32Array(numberOfVertices * 3 * 2);
+        var vbNormals = new Float32Array(numberOfVertices * 3);
         var ibIndices = IndexDatatype.createTypedArray(numberOfVertices, numberOfIndices);
 
         var position;
@@ -86,6 +87,7 @@ define([
         var normal;
 
         var index = 0;
+        var normalIndex = 0;
         for (j = 0; j < numPositions; ++j) {
             position = positions[j];
             normal = ellipsoid.geodeticSurfaceNormal(position, scratchNormal);
@@ -96,6 +98,10 @@ define([
             EncodedCartesian3.writeElements(topPosition, vbPositions, index);
             EncodedCartesian3.writeElements(position, vbPositions, index + 6);
             index += 12;
+
+            Cartesian3.pack(Cartesian3.ZERO, vbNormals, normalIndex);
+            Cartesian3.pack(normal, vbNormals, normalIndex + 3);
+            normalIndex += 6;
         }
 
         //
@@ -119,6 +125,10 @@ define([
                 EncodedCartesian3.writeElements(topPosition, vbPositions, index);
                 EncodedCartesian3.writeElements(position, vbPositions, index + 6);
                 index += 12;
+
+                Cartesian3.pack(Cartesian3.ZERO, vbNormals, normalIndex);
+                Cartesian3.pack(normal, vbNormals, normalIndex + 3);
+                normalIndex += 6;
             }
         }
 
@@ -193,11 +203,11 @@ define([
             interiorIndex += 2;
         }
 
-        var vertexBuffer = context.createVertexBuffer(vbPositions, BufferUsage.STATIC_DRAW);
+        var positionBuffer = context.createVertexBuffer(vbPositions, BufferUsage.STATIC_DRAW);
+        var normalBuffer = context.createVertexBuffer(vbNormals, BufferUsage.STATIC_DRAW);
 
         var indexDatatype = (ibIndices.BYTES_PER_ELEMENT === 2) ?  IndexDatatype.UNSIGNED_SHORT : IndexDatatype.UNSIGNED_INT;
         var indexBuffer = context.createIndexBuffer(ibIndices, BufferUsage.STATIC_DRAW, indexDatatype);
-
 
         var capsAndWalls = [{
             offset : 0,
@@ -229,7 +239,8 @@ define([
             topCapAndWalls.push(interiorWalls);
         }
 
-        this.vertexBuffer = vertexBuffer;
+        this.positionBuffer = positionBuffer;
+        this.normalBuffer = normalBuffer;
         this.indexBuffer = indexBuffer;
         this.capsAndWalls = capsAndWalls;
         this.topCapAndWalls = topCapAndWalls;
