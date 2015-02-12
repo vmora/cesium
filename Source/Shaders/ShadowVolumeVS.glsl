@@ -22,5 +22,6 @@ void main() {
     // Moving the vertex down is a function of the view parameters so
     // it is done here to avoid buring CPU time.
     //
-    gl_Position = czm_modelViewProjectionRelativeToEye * (position + vec4(normal * delta, 0));
+    //gl_Position = czm_modelViewProjectionRelativeToEye * (position + vec4(normal * delta, 0));
+    gl_Position = czm_modelViewProjectionRelativeToEye * position;
 }
